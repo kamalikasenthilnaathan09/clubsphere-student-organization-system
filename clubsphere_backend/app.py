@@ -28,6 +28,7 @@ except ImportError:
 
 import database
 import copilot_service
+import email_service
 
 import io
 try:
@@ -613,6 +614,190 @@ def users_toggle(user_id):
     status_text = 'activated' if new_status else 'deactivated'
     flash(f"User '{user['username']}' has been {status_text}.", 'info')
     return redirect(url_for('users_list'))
+
+
+# -------------------------------------------------------------------------
+# ADMIN: CLUB DIRECTORY & ATTENDEE REGISTRY
+# -------------------------------------------------------------------------
+
+@app.route('/admin/clubs')
+@login_required
+@role_required('Administrator')
+def admin_clubs_directory():
+    """
+    Admin Club Directory: Displays all campus clubs with live registered member
+    counts, active status breakdown, and access to the attendee registry.
+    """
+    db = get_db()
+    clubs = db.execute("""
+        SELECT c.*,
+               COUNT(cm.id) AS total_members,
+               SUM(CASE WHEN cm.status = 'Active' THEN 1 ELSE 0 END) AS active_members,
+               SUM(CASE WHEN cm.status = 'Expired' THEN 1 ELSE 0 END) AS expired_members,
+               SUM(CASE WHEN cm.status = 'Pending' THEN 1 ELSE 0 END) AS pending_members
+        FROM clubs c
+        LEFT JOIN club_members cm ON c.id = cm.club_id
+        GROUP BY c.id
+        ORDER BY c.name ASC
+    """).fetchall()
+
+    total_clubs = len(clubs)
+    total_registrations = sum(c['total_members'] or 0 for c in clubs)
+    total_active = sum(c['active_members'] or 0 for c in clubs)
+
+    multi_club_row = db.execute("""
+        SELECT COUNT(*) AS c FROM (
+            SELECT email FROM club_members GROUP BY email HAVING COUNT(DISTINCT club_id) > 1
+        )
+    """).fetchone()
+    multi_club_count = multi_club_row['c'] if multi_club_row else 0
+
+    return render_template(
+        'admin/clubs_list.html',
+        clubs=clubs,
+        total_clubs=total_clubs,
+        total_registrations=total_registrations,
+        total_active=total_active,
+        multi_club_count=multi_club_count
+    )
+
+
+@app.route('/admin/clubs/<int:club_id>/members')
+@login_required
+@role_required('Administrator')
+def admin_club_members(club_id):
+    """
+    Club-specific Attendee Directory: Displays registered members of a specific club
+    with search and status filtering, registration details, and event attendance counts.
+    """
+    db = get_db()
+    club = db.execute("SELECT * FROM clubs WHERE id = ?", (club_id,)).fetchone()
+    if not club:
+        flash('Requested club does not exist in the system.', 'danger')
+        return redirect(url_for('admin_clubs_directory'))
+
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', '').strip()
+
+    where_clauses = ["cm.club_id = ?"]
+    params = [club_id]
+
+    if search:
+        where_clauses.append("(cm.full_name LIKE ? OR cm.email LIKE ? OR cm.student_id LIKE ? OR cm.department LIKE ?)")
+        pat = f"%{search}%"
+        params.extend([pat, pat, pat, pat])
+
+    if status_filter in ('Active', 'Expired', 'Pending', 'Suspended', 'Inactive'):
+        where_clauses.append("cm.status = ?")
+        params.append(status_filter)
+
+    where_sql = " AND ".join(where_clauses)
+
+    members = db.execute(f"""
+        SELECT cm.*,
+               m.member_code,
+               (SELECT COUNT(*) FROM tickets t
+                WHERE t.checked_in = 1 AND (
+                    (cm.member_id IS NOT NULL AND t.member_id = cm.member_id)
+                    OR LOWER(t.purchaser_email) = LOWER(cm.email)
+                )) AS attended_events_count
+        FROM club_members cm
+        LEFT JOIN members m ON cm.member_id = m.id
+        WHERE {where_sql}
+        ORDER BY CASE WHEN cm.status = 'Active' THEN 0 ELSE 1 END, cm.full_name ASC
+    """, params).fetchall()
+
+    stats_row = db.execute("""
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) AS active,
+               SUM(CASE WHEN status = 'Expired' THEN 1 ELSE 0 END) AS expired,
+               SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending
+        FROM club_members
+        WHERE club_id = ?
+    """, (club_id,)).fetchone()
+
+    org_members = db.execute("""
+        SELECT id, full_name, email, student_id, department
+        FROM members
+        WHERE email NOT IN (SELECT email FROM club_members WHERE club_id = ?)
+        ORDER BY full_name ASC
+    """, (club_id,)).fetchall()
+
+    return render_template(
+        'admin/club_members.html',
+        club=club,
+        members=members,
+        stats=stats_row,
+        search=search,
+        status_filter=status_filter,
+        org_members=org_members
+    )
+
+
+@app.route('/admin/clubs/<int:club_id>/register-member', methods=['POST'])
+@login_required
+@role_required('Administrator')
+def admin_club_register_member(club_id):
+    """
+    Register an existing member or new attendee directly into a club's membership roster.
+    """
+    db = get_db()
+    club = db.execute("SELECT * FROM clubs WHERE id = ?", (club_id,)).fetchone()
+    if not club:
+        flash('Requested club does not exist.', 'danger')
+        return redirect(url_for('admin_clubs_directory'))
+
+    member_id_raw = request.form.get('member_id', '').strip()
+    full_name = request.form.get('full_name', '').strip()
+    email = request.form.get('email', '').strip().lower()
+    student_id = request.form.get('student_id', '').strip()
+    department = request.form.get('department', '').strip()
+    status = request.form.get('status', 'Active')
+    join_date = request.form.get('join_date', '').strip() or date.today().isoformat()
+
+    member_id = None
+    user_id = None
+
+    if member_id_raw and member_id_raw.isdigit():
+        m = db.execute("SELECT * FROM members WHERE id = ?", (int(member_id_raw),)).fetchone()
+        if m:
+            full_name = m['full_name']
+            email = m['email'].lower()
+            student_id = m['student_id'] or student_id
+            department = m['department'] or department
+            user_id = m['user_id']
+            member_id = m['id']
+
+    if not user_id and email:
+        u = db.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
+        user_id = u['id'] if u else None
+
+    if not full_name or not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        flash('A valid name and email address are required to register a club member.', 'danger')
+        return redirect(url_for('admin_club_members', club_id=club_id))
+
+    existing = db.execute(
+        "SELECT id FROM club_members WHERE club_id = ? AND LOWER(email) = ?",
+        (club_id, email)
+    ).fetchone()
+    if existing:
+        flash(f"A member with email '{email}' is already registered with {club['name']}.", 'warning')
+        return redirect(url_for('admin_club_members', club_id=club_id))
+
+    try:
+        db.execute("""
+            INSERT INTO club_members (
+                club_id, member_id, user_id, full_name, email,
+                student_id, department, status, join_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (club_id, member_id, user_id, full_name, email, student_id, department, status, join_date))
+        db.commit()
+        flash(f"'{full_name}' was successfully registered with {club['name']}.", 'success')
+    except sqlite3.IntegrityError:
+        db.rollback()
+        flash('Registration could not be completed due to a database integrity constraint.', 'danger')
+
+    return redirect(url_for('admin_club_members', club_id=club_id))
 
 
 # -------------------------------------------------------------------------
@@ -3777,36 +3962,91 @@ def announcements_list():
 
     placeholders = ','.join('?' for _ in allowed)
     announcements = db.execute(f"""
-        SELECT a.*, u.full_name AS publisher_name
+        SELECT a.*, u.full_name AS publisher_name, c.name AS club_name, c.code AS club_code
         FROM announcements a
         JOIN users u ON a.published_by = u.id
+        LEFT JOIN clubs c ON a.club_id = c.id
         WHERE a.audience IN ({placeholders})
         ORDER BY a.created_at DESC
     """, allowed).fetchall()
 
-    return render_template('announcements/list.html', announcements=announcements)
+    clubs = db.execute("SELECT * FROM clubs ORDER BY name ASC").fetchall()
+    selected_club_id = request.args.get('club_id', type=int)
+
+    # Generate idempotency token for duplicate submission prevention
+    form_token = secrets.token_hex(16)
+
+    return render_template(
+        'announcements/list.html',
+        announcements=announcements,
+        clubs=clubs,
+        selected_club_id=selected_club_id,
+        form_token=form_token
+    )
 
 
 @app.route('/announcements/new', methods=['POST'])
 @login_required
 @role_required('Administrator', 'Event Organizer')
 def announcements_new():
+    # 1. Prevent accidental duplicate form submission via idempotency token
+    form_token = request.form.get('form_token', '').strip()
+    if form_token:
+        seen_tokens = session.get('announcement_tokens', [])
+        if form_token in seen_tokens:
+            flash('Duplicate submission detected. Announcement has already been published.', 'warning')
+            return redirect(url_for('announcements_list'))
+        seen_tokens.append(form_token)
+        session['announcement_tokens'] = seen_tokens[-20:]
+
     title = request.form.get('title', '').strip()
     content = request.form.get('content', '').strip()
     audience = request.form.get('audience', 'All')
     priority = request.form.get('priority', 'Normal')
+    raw_club_id = request.form.get('club_id', '').strip()
+    club_id = int(raw_club_id) if raw_club_id and raw_club_id.isdigit() else None
+    send_email = request.form.get('send_email') in ('1', 'true', 'on')
 
     if not title or not content:
         flash('Title and content are required for announcements.', 'danger')
         return redirect(url_for('announcements_list'))
 
     db = get_db()
-    db.execute("""
-        INSERT INTO announcements (title, content, audience, priority, published_by)
-        VALUES (?, ?, ?, ?, ?)
-    """, (title, content, audience, priority, session.get('user_id')))
+    cursor = db.cursor()
+    cursor.execute("""
+        INSERT INTO announcements (title, content, audience, priority, published_by, club_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (title, content, audience, priority, session.get('user_id'), club_id))
+    announcement_id = cursor.lastrowid
     db.commit()
-    flash('Announcement published successfully to club noticeboard.', 'success')
+
+    # 2. Dispatch club-specific announcement emails if club was selected
+    if club_id and send_email:
+        res = email_service.dispatch_club_announcement_email(
+            db=db,
+            club_id=club_id,
+            announcement_id=announcement_id,
+            title=title,
+            content=content,
+            publisher_id=session.get('user_id')
+        )
+        c_name = res.get('club_name', 'Club')
+        elig = res.get('eligible_count', 0)
+        sent = res.get('sent_count', 0)
+        failed = res.get('failed_count', 0)
+        skipped = res.get('skipped_count', 0)
+
+        if elig == 0:
+            flash(f"Announcement published to noticeboard. No eligible active members found for {c_name} (0 emails sent, {skipped} skipped).", 'info')
+        elif failed == 0:
+            flash(f"Announcement published and dispatched to {c_name}: {sent} emails sent successfully ({elig} eligible, {skipped} skipped).", 'success')
+        elif sent > 0:
+            flash(f"Announcement published with partial email delivery to {c_name}: {sent} sent, {failed} failed ({elig} eligible, {skipped} skipped).", 'warning')
+        else:
+            flash(f"Announcement published to noticeboard, but email delivery failed for {c_name}: {failed} failed ({elig} eligible).", 'danger')
+    else:
+        flash('Announcement published successfully to club noticeboard.', 'success')
+
     return redirect(url_for('announcements_list'))
 
 
