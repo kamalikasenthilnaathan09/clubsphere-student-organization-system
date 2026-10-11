@@ -214,10 +214,14 @@ def role_required(*allowed_roles):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if 'user_id' not in session:
+                if request.path.startswith('/api/'):
+                    return jsonify({'success': False, 'message': 'Authentication required.'}), 401
                 flash('Please sign in to access this page.', 'warning')
                 return redirect(url_for('login', next=request.path))
             user_role = session.get('role')
             if user_role not in allowed_roles and user_role != 'Administrator':
+                if request.path.startswith('/api/'):
+                    return jsonify({'success': False, 'status': 'UNAUTHORIZED', 'message': 'Access denied. You do not have permission to view this section.'}), 403
                 flash('Access denied. You do not have permission to view this section.', 'danger')
                 return redirect(url_for('dashboard'))
             return f(*args, **kwargs)
@@ -2426,15 +2430,149 @@ def get_gate_attendance_stats(db, event_id=None):
         'rejected': int(rejected or 0)
     }
 
+def is_user_authorized_for_gate_access(db, user_id, user_role):
+    """
+    Check if user role has general gate verification permission.
+    - Administrator: Full access.
+    - Event Organizer: Access to gate verification (events filtered to managed events).
+    - Volunteer: Access if assigned to gate duty or assigned an event,
+      or general fallback when no tasks configured in DB.
+    - Treasurer, Member, others: Denied.
+    """
+    if user_role == 'Administrator':
+        return True
+    if user_role == 'Event Organizer':
+        return True
+    if user_role == 'Volunteer':
+        total_tasks = db.execute("SELECT COUNT(*) AS cnt FROM volunteer_tasks").fetchone()['cnt']
+        if total_tasks == 0:
+            return True
+        user_tasks = db.execute(
+            "SELECT COUNT(*) AS cnt FROM volunteer_tasks WHERE assigned_to = ?",
+            (user_id,)
+        ).fetchone()['cnt']
+        return user_tasks > 0
+    return False
+
+
+def is_user_authorized_for_event(db, user_id, user_role, event_id):
+    """
+    Check if a specific user can verify tickets for a given event_id.
+    - Administrator: All events.
+    - Event Organizer: Events where created_by = user_id or created_by IS NULL.
+    - Volunteer: Events where they have an assigned task or gate duty.
+      If tasks exist in DB and user is not assigned to this event: Denied.
+      If no tasks exist in DB at all: Minimal fallback allowed.
+    - Others: Denied.
+    """
+    if not user_id or not user_role:
+        return False
+    if user_role == 'Administrator':
+        return True
+    if user_role not in ('Event Organizer', 'Volunteer'):
+        return False
+
+    if event_id is None:
+        return is_user_authorized_for_gate_access(db, user_id, user_role)
+
+    event = db.execute("SELECT id, title, created_by, status FROM events WHERE id = ?", (event_id,)).fetchone()
+    if not event:
+        return False
+
+    if user_role == 'Event Organizer':
+        if event['created_by'] is None or event['created_by'] == user_id:
+            return True
+        return False
+
+    if user_role == 'Volunteer':
+        has_task_for_event = db.execute(
+            "SELECT COUNT(*) AS cnt FROM volunteer_tasks WHERE assigned_to = ? AND event_id = ?",
+            (user_id, event_id)
+        ).fetchone()['cnt']
+        if has_task_for_event > 0:
+            return True
+
+        total_tasks_for_event = db.execute(
+            "SELECT COUNT(*) AS cnt FROM volunteer_tasks WHERE event_id = ?",
+            (event_id,)
+        ).fetchone()['cnt']
+        total_user_tasks = db.execute(
+            "SELECT COUNT(*) AS cnt FROM volunteer_tasks WHERE assigned_to = ?",
+            (user_id,)
+        ).fetchone()['cnt']
+        total_db_tasks = db.execute(
+            "SELECT COUNT(*) AS cnt FROM volunteer_tasks"
+        ).fetchone()['cnt']
+
+        if total_tasks_for_event > 0 or total_user_tasks > 0:
+            return False
+
+        if total_db_tasks == 0:
+            return True
+
+        return False
+
+    return False
+
+
+def get_authorized_events_for_user(db, user_id, user_role):
+    """
+    Return active events the user is authorized to manage or verify.
+    """
+    if user_role == 'Administrator':
+        return db.execute(
+            "SELECT id, title, event_date, created_by FROM events WHERE status != 'Cancelled' ORDER BY event_date ASC"
+        ).fetchall()
+    elif user_role == 'Event Organizer':
+        return db.execute(
+            """SELECT id, title, event_date, created_by FROM events 
+               WHERE status != 'Cancelled' AND (created_by = ? OR created_by IS NULL) 
+               ORDER BY event_date ASC""",
+            (user_id,)
+        ).fetchall()
+    elif user_role == 'Volunteer':
+        assigned_events = db.execute(
+            """SELECT DISTINCT e.id, e.title, e.event_date, e.created_by 
+               FROM events e
+               JOIN volunteer_tasks vt ON vt.event_id = e.id
+               WHERE vt.assigned_to = ? AND e.status != 'Cancelled'
+               ORDER BY e.event_date ASC""",
+            (user_id,)
+        ).fetchall()
+        if assigned_events:
+            return assigned_events
+
+        total_tasks = db.execute("SELECT COUNT(*) AS cnt FROM volunteer_tasks").fetchone()['cnt']
+        if total_tasks == 0:
+            return db.execute(
+                "SELECT id, title, event_date, created_by FROM events WHERE status != 'Cancelled' ORDER BY event_date ASC"
+            ).fetchall()
+        return []
+    return []
+
 
 @app.route('/tickets/checkin', methods=['GET', 'POST'])
+@app.route('/gate/verify', methods=['GET', 'POST'])
+@app.route('/gate-verification', methods=['GET', 'POST'])
 @login_required
 @role_required('Administrator', 'Event Organizer', 'Volunteer')
 def ticket_checkin():
     db = get_db()
     ensure_gate_logs_table(db)
+    user_id = session.get('user_id')
+    user_role = session.get('role')
+
+    if not is_user_authorized_for_gate_access(db, user_id, user_role):
+        flash('Access denied. You are not authorized for gate verification.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    events = get_authorized_events_for_user(db, user_id, user_role)
     selected_event_id = request.args.get('event_id', type=int)
-    events = db.execute("SELECT id, title, event_date FROM events WHERE status != 'Cancelled' ORDER BY event_date ASC").fetchall()
+
+    # Validate that selected_event_id is authorized for this user
+    if selected_event_id and not is_user_authorized_for_event(db, user_id, user_role, selected_event_id):
+        flash('Access denied. You are not authorized to verify tickets for this event.', 'danger')
+        selected_event_id = None
 
     checkin_result = None
 
@@ -2442,12 +2580,15 @@ def ticket_checkin():
         ticket_ref = request.form.get('ticket_ref', '').strip().upper()
         event_filter_id = request.form.get('event_id', type=int)
         if event_filter_id is not None:
-            selected_event_id = event_filter_id
+            if not is_user_authorized_for_event(db, user_id, user_role, event_filter_id):
+                flash('Access denied. You are not authorized to verify tickets for this event.', 'danger')
+            else:
+                selected_event_id = event_filter_id
 
         if not ticket_ref:
             flash('Please enter or scan a valid ticket reference code.', 'warning')
         else:
-            checkin_result = process_ticket_checkin(db, ticket_ref, selected_event_id, session.get('user_id'))
+            checkin_result = process_ticket_checkin(db, ticket_ref, selected_event_id, user_id)
             if checkin_result['success']:
                 flash(checkin_result['message'], 'success')
             else:
@@ -2467,6 +2608,15 @@ def ticket_checkin():
     if selected_event_id:
         recent_checkins_query += " AND t.event_id = ?"
         params.append(selected_event_id)
+    elif user_role != 'Administrator' and events:
+        allowed_ids = [e['id'] for e in events]
+        if allowed_ids:
+            placeholders = ','.join(['?'] * len(allowed_ids))
+            recent_checkins_query += f" AND t.event_id IN ({placeholders})"
+            params.extend(allowed_ids)
+    elif user_role != 'Administrator' and not events:
+        recent_checkins_query += " AND 1=0"
+
     recent_checkins_query += " ORDER BY t.check_in_time DESC LIMIT 15"
     recent_checkins = db.execute(recent_checkins_query, params).fetchall()
 
@@ -2489,26 +2639,42 @@ def ticket_checkin():
 
 
 @app.route('/api/tickets/checkin', methods=['POST'])
+@app.route('/api/gate/verify', methods=['POST'])
 @login_required
 @role_required('Administrator', 'Event Organizer', 'Volunteer')
 def api_ticket_checkin():
     """
     AJAX endpoint for instant barcode scanner or live ticket check-in.
     """
+    user_id = session.get('user_id')
+    user_role = session.get('role')
+    db = get_db()
+
+    if not is_user_authorized_for_gate_access(db, user_id, user_role):
+        return jsonify({'success': False, 'status': 'UNAUTHORIZED', 'message': 'Access denied: You are not authorized for gate verification.'}), 403
+
     data = request.get_json(silent=True) or request.form
     ticket_ref = data.get('ticket_ref', '').strip().upper()
     event_id = data.get('event_id')
     event_id = int(event_id) if (event_id is not None and str(event_id).strip() != '') else None
 
-    db = get_db()
+    if event_id and not is_user_authorized_for_event(db, user_id, user_role, event_id):
+        return jsonify({'success': False, 'status': 'UNAUTHORIZED', 'message': 'Access denied: You are not authorized to verify tickets for this event.'}), 403
+
     if not ticket_ref:
         stats = get_gate_attendance_stats(db, event_id)
         return jsonify({'success': False, 'status': 'WARNING', 'message': 'Ticket reference code is required.', 'stats': stats}), 400
 
-    result = process_ticket_checkin(db, ticket_ref, event_id, session.get('user_id'))
+    result = process_ticket_checkin(db, ticket_ref, event_id, user_id)
     result['stats'] = get_gate_attendance_stats(db, event_id)
-    status_code = 200 if result['success'] else 400
+    if result.get('status') == 'UNAUTHORIZED':
+        status_code = 403
+    elif result.get('success'):
+        status_code = 200
+    else:
+        status_code = 400
     return jsonify(result), status_code
+
 
 
 def process_ticket_checkin(db, ticket_ref, event_id, user_id):
@@ -2554,6 +2720,33 @@ def process_ticket_checkin(db, ticket_ref, event_id, user_id):
                 'verifier_name': staff_name
             },
             'message': f"Ticket not found: Ticket reference '{ticket_ref}' was not found in the system."
+        }
+
+    # Verifier authorization check for this ticket's event
+    verifier_role = None
+    if user_id:
+        user_row = db.execute("SELECT role FROM users WHERE id = ?", (user_id,)).fetchone()
+        if user_row:
+            verifier_role = user_row['role']
+    if not verifier_role:
+        verifier_role = session.get('role')
+
+    if verifier_role and not is_user_authorized_for_event(db, user_id, verifier_role, ticket['event_id']):
+        log_gate_verification(db, ticket['ticket_ref'], ticket['event_id'], 'UNAUTHORIZED', f"Staff user '{staff_name}' is not authorized to verify tickets for event '{ticket['event_title']}'.", user_id)
+        return {
+            'success': False,
+            'status': 'UNAUTHORIZED',
+            'ticket': {
+                'ticket_ref': ticket['ticket_ref'],
+                'purchaser_name': ticket['purchaser_name'] or 'Attendee',
+                'event_title': ticket['event_title'],
+                'event_date': ticket['event_date'] or '—',
+                'event_time': ticket['event_time'] or '—',
+                'status': 'Rejected: Unauthorized Staff',
+                'check_in_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'verifier_name': staff_name
+            },
+            'message': f"Access Denied: You are not authorized to verify tickets for event '{ticket['event_title']}'."
         }
 
     # 2. Inactive / Cancelled event
