@@ -1,0 +1,45 @@
+# ==============================================================================
+# ClubSphere — Environment Configuration Template
+# ==============================================================================
+# Copy this file to '.env' in the project root:
+#   PowerShell: Copy-Item .env.example .env
+#   Bash:       cp .env.example .env
+#
+# NOTE: The .env file is git-ignored and should never be committed to source control.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Generative AI Provider Configuration (Club AI Assistant)
+# ------------------------------------------------------------------------------
+# Primary Preferred Provider: Google Gemini
+# Get your API key from Google AI Studio: https://aistudio.google.com/
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+
+# Optional Alternative Provider: OpenAI
+# Get your API key from OpenAI Platform: https://platform.openai.com/
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+
+# Provider selection override ('gemini' or 'openai'; defaults to auto-detecting available keys)
+CLUB_AI_PROVIDER=gemini
+
+# Generic model override (applies to active provider if specific model not set)
+CLUB_AI_MODEL=
+
+# ------------------------------------------------------------------------------
+# Application & Database Settings
+# ------------------------------------------------------------------------------
+# Secret key for session encryption (auto-generated if omitted)
+# SECRET_KEY=
+
+# Database path override (defaults to instance/clubsphere_demo.db if present, else instance/clubsphere.db)
+# CLUB_SPHERE_DB=instance/clubsphere_demo.db
+
+# ------------------------------------------------------------------------------
+# Alternative: PowerShell Session Variables
+# ------------------------------------------------------------------------------
+# If you prefer running without a .env file, set environment variables directly:
+#   $env:GEMINI_API_KEY="your-gemini-api-key"
+#   $env:GEMINI_MODEL="gemini-2.5-flash"
+#   python app.py
