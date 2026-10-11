@@ -347,6 +347,39 @@ def init_db(db_path=None):
     );
     """)
 
+    # 18. Clubs Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS clubs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        code TEXT UNIQUE NOT NULL,
+        description TEXT,
+        category TEXT DEFAULT 'General',
+        email TEXT,
+        faculty_advisor TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # 19. Club Memberships / Attendee Registrations Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS club_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+        member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        full_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        student_id TEXT,
+        department TEXT,
+        membership_type TEXT DEFAULT 'Annual',
+        status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Expired', 'Pending', 'Suspended', 'Inactive')),
+        join_date DATE NOT NULL DEFAULT (DATE('now')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(club_id, email)
+    );
+    """)
+
     # Dynamic column migrations for users table (academic & contact info, preferences)
     cursor.execute("PRAGMA table_info(users);")
     user_cols = [col[1] for col in cursor.fetchall()]
@@ -362,6 +395,25 @@ def init_db(db_path=None):
     for col_name, col_type in new_user_cols:
         if col_name not in user_cols:
             cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type};")
+
+    # Dynamic column migrations for announcements table (club targeting & email dispatch audit)
+    cursor.execute("PRAGMA table_info(announcements);")
+    ann_cols = [col[1] for col in cursor.fetchall()]
+    new_ann_cols = [
+        ('club_id', 'INTEGER REFERENCES clubs(id)'),
+        ('email_sent_count', 'INTEGER DEFAULT 0'),
+        ('email_status', 'TEXT'),
+        ('email_summary', 'TEXT')
+    ]
+    for col_name, col_type in new_ann_cols:
+        if col_name not in ann_cols:
+            cursor.execute(f"ALTER TABLE announcements ADD COLUMN {col_name} {col_type};")
+
+    # Dynamic column migrations for members table
+    cursor.execute("PRAGMA table_info(members);")
+    mem_cols = [col[1] for col in cursor.fetchall()]
+    if 'club_id' not in mem_cols:
+        cursor.execute("ALTER TABLE members ADD COLUMN club_id INTEGER REFERENCES clubs(id);")
 
     # Create Indexes for performance
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);")
@@ -386,9 +438,84 @@ def init_db(db_path=None):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_points_source ON achievement_points(source_type, source_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_cert_ref ON student_certificates(certificate_ref);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_cert_user ON student_certificates(user_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clubs_code ON clubs(code);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_club_members_club ON club_members(club_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_club_members_email ON club_members(email);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_club_members_status ON club_members(status);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_announcements_club ON announcements(club_id);")
 
     conn.commit()
+    seed_default_clubs_if_empty(conn)
+    conn.commit()
     conn.close()
+
+
+def seed_default_clubs_if_empty(conn):
+    """
+    Safely seeds default campus clubs and maps existing demo members
+    if the clubs table is currently empty. Non-destructive and idempotent.
+    """
+    cursor = conn.cursor()
+    row = cursor.execute("SELECT COUNT(*) AS c FROM clubs").fetchone()
+    if row and row['c'] > 0:
+        return
+
+    default_clubs = [
+        ('Robotics & AI Club', 'ROBOTICS', 'Designing autonomous systems, competitive robotics, and machine learning models.', 'Technology & Robotics', 'robotics@clubsphere.org', 'Dr. Arun Kumar'),
+        ('Coding & Open Source Society', 'DEV-SOC', 'Full-stack engineering, open-source software, competitive programming, and hackathons.', 'Software & Computing', 'devsoc@clubsphere.org', 'Prof. Sunita Rao'),
+        ('Music & Cultural Arts Club', 'CULTURAL', 'Campus concerts, acoustic jams, theatrical performances, and creative student arts.', 'Arts & Culture', 'cultural@clubsphere.org', 'Dr. Vikram Malhotra'),
+        ('Mechanical & Mobility Society', 'MECH-MOB', 'Motorsport engineering, electric vehicle prototyping, and CAD innovation.', 'Engineering & Design', 'mobility@clubsphere.org', 'Prof. Harish Nair')
+    ]
+
+    for name, code, desc, cat, email, advisor in default_clubs:
+        cursor.execute("""
+            INSERT OR IGNORE INTO clubs (name, code, description, category, email, faculty_advisor)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (name, code, desc, cat, email, advisor))
+
+    conn.commit()
+
+    # Link existing demo members to clubs if club_members is empty
+    cm_count = cursor.execute("SELECT COUNT(*) AS c FROM club_members").fetchone()
+    if cm_count and cm_count['c'] == 0:
+        clubs_by_code = {r['code']: r['id'] for r in cursor.execute("SELECT id, code FROM clubs").fetchall()}
+        existing_members = cursor.execute("SELECT * FROM members").fetchall()
+        for m in existing_members:
+            email = m['email']
+            name = m['full_name']
+            sid = m['student_id']
+            status = m['status']
+            jdate = m['join_date'] or datetime.now().date().isoformat()
+            uid = m['user_id']
+            mid = m['id']
+
+            # Logical club affiliations for rich realistic demonstration
+            assigned_clubs = []
+            if 'ananya' in name.lower():
+                assigned_clubs = ['ROBOTICS', 'DEV-SOC']
+            elif 'rohan' in name.lower():
+                assigned_clubs = ['DEV-SOC', 'ROBOTICS']
+            elif 'priya' in name.lower():
+                assigned_clubs = ['CULTURAL']
+            elif 'karthik' in name.lower():
+                assigned_clubs = ['MECH-MOB']
+            elif 'mech' in (m['department'] or '').lower():
+                assigned_clubs = ['MECH-MOB']
+            elif any(k in (m['department'] or '').lower() for k in ('cs', 'info', 'is')):
+                assigned_clubs = ['DEV-SOC']
+            else:
+                assigned_clubs = ['ROBOTICS']
+
+            for ccode in assigned_clubs:
+                cid = clubs_by_code.get(ccode)
+                if cid:
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO club_members (
+                            club_id, member_id, user_id, full_name, email,
+                            student_id, department, status, join_date
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (cid, mid, uid, name, email, sid, m['department'], status, jdate))
+        conn.commit()
 
 
 def has_admin_user(conn=None, db_path=None):
