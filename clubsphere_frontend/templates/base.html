@@ -102,6 +102,10 @@
 
         {% if current_user.role == 'Administrator' %}
         <div class="nav-section-title">Administration</div>
+        <a href="{{ url_for('admin_clubs_directory') }}" class="nav-link {% if request.endpoint and 'club' in request.endpoint and 'announcement' not in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">🏛️</span>
+          <span>Club Directory</span>
+        </a>
         <a href="{{ url_for('users_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('users') %}active{% endif %}">
           <span class="nav-icon">⚙️</span>
           <span>User Accounts</span>
