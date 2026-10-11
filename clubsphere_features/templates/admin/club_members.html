@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% block title %}{{ club.name }} — Attendee Registry — ClubSphere{% endblock %}
+{% block page_title %}{{ club.name }}{% endblock %}
+
+{% block top_actions %}
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+  <a href="{{ url_for('admin_clubs_directory') }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+    <span>⬅️</span> All Clubs
+  </a>
+  <button type="button" class="btn btn-outline btn-sm" data-modal-target="register-member-modal" style="display: inline-flex; align-items: center; gap: 4px;">
+    <span>+</span> Register Member
+  </button>
+  <a href="{{ url_for('announcements_list', club_id=club.id) }}" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+    <span>📢</span> Broadcast to Club
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="club-members-page-container">
+
+  <!-- Club Profile Header Card -->
+  <div class="card" style="margin-bottom: 24px; border-radius: 12px; overflow: hidden; background: #ffffff; border: 1px solid #e2e8f0;">
+    <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%); color: #ffffff; padding: 24px 28px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-family: monospace; font-size: 0.8rem; font-weight: 800; background: #ffffff20; padding: 4px 10px; border-radius: 4px; border: 1px solid #ffffff30;">
+              {{ club.code }}
+            </span>
+            <span style="background: #ffffff25; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; font-weight: 600;">
+              {{ club.category or 'Campus Organization' }}
+            </span>
+          </div>
+          <h2 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: #ffffff;">{{ club.name }}</h2>
+          <p style="margin: 6px 0 0 0; color: #e0e7ff; font-size: 0.9rem; max-width: 680px; line-height: 1.5;">
+            {{ club.description or 'Official student organization chapter.' }}
+          </p>
+        </div>
+
+        <div style="text-align: right; font-size: 0.85rem; color: #c7d2fe;">
+          {% if club.faculty_advisor %}
+          <div>Faculty Advisor: <strong style="color: #ffffff;">{{ club.faculty_advisor }}</strong></div>
+          {% endif %}
+          {% if club.email %}
+          <div style="margin-top: 4px;">Contact: <span style="color: #e0e7ff;">{{ club.email }}</span></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats Bar -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; padding: 16px 24px; background: #f8fafc; border-top: 1px solid #f1f5f9;">
+      <div>
+        <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Registered</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">{{ stats.total or 0 }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Active Members</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: #16a34a;">{{ stats.active or 0 }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Expired</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: #dc2626;">{{ stats.expired or 0 }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Pending Dues</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: #d97706;">{{ stats.pending or 0 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filtering Toolbar -->
+  <div class="card" style="margin-bottom: 24px; padding: 16px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;">
+    <form method="GET" action="{{ url_for('admin_club_members', club_id=club.id) }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+      <!-- Search Input -->
+      <div style="flex: 1; min-width: 260px; position: relative;">
+        <input type="text" name="search" value="{{ search or '' }}" class="form-control" placeholder="Search by member name, email, student ID, department..." style="padding-left: 36px;">
+        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.95rem;">🔍</span>
+      </div>
+
+      <!-- Status Filters -->
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <a href="{{ url_for('admin_club_members', club_id=club.id, search=search) }}" 
+           class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-secondary{% endif %}">
+          All ({{ stats.total or 0 }})
+        </a>
+        <a href="{{ url_for('admin_club_members', club_id=club.id, status='Active', search=search) }}" 
+           class="btn btn-sm {% if status_filter == 'Active' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Active ({{ stats.active or 0 }})
+        </a>
+        <a href="{{ url_for('admin_club_members', club_id=club.id, status='Expired', search=search) }}" 
+           class="btn btn-sm {% if status_filter == 'Expired' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Expired ({{ stats.expired or 0 }})
+        </a>
+        <a href="{{ url_for('admin_club_members', club_id=club.id, status='Pending', search=search) }}" 
+           class="btn btn-sm {% if status_filter == 'Pending' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Pending ({{ stats.pending or 0 }})
+        </a>
+
+        {% if search or status_filter %}
+        <a href="{{ url_for('admin_club_members', club_id=club.id) }}" class="btn btn-outline btn-sm" title="Clear all filters">
+          ✕ Clear
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Attendee Registry Table -->
+  {% if members %}
+  <div class="card" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff; margin-bottom: 32px;">
+    <div style="overflow-x: auto;">
+      <table class="table" style="width: 100%; border-collapse: collapse; text-align: left; margin: 0;">
+        <thead>
+          <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+            <th style="padding: 14px 20px;">Member / Attendee</th>
+            <th style="padding: 14px 16px;">Contact Email</th>
+            <th style="padding: 14px 16px;">Student ID / Dept</th>
+            <th style="padding: 14px 16px;">Registration Date</th>
+            <th style="padding: 14px 16px;">Membership Status</th>
+            <th style="padding: 14px 16px;">Event Attendance</th>
+            <th style="padding: 14px 20px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in members %}
+          <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;">
+            <!-- Member Name -->
+            <td style="padding: 14px 20px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 50%; background: #e0e7ff; color: #3730a3; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
+                  {{ (m.full_name[:1] if m.full_name else 'M') | upper }}
+                </div>
+                <div>
+                  <div style="font-weight: 700; color: #0f172a; font-size: 0.92rem;">
+                    {{ m.full_name }}
+                  </div>
+                  {% if m.member_code %}
+                  <div style="font-size: 0.75rem; color: #64748b; font-family: monospace;">
+                    {{ m.member_code }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+
+            <!-- Contact Email -->
+            <td style="padding: 14px 16px; font-size: 0.85rem; color: #334155;">
+              <a href="mailto:{{ m.email }}" style="color: #2563eb; text-decoration: none;">
+                {{ m.email }}
+              </a>
+            </td>
+
+            <!-- Academic Info -->
+            <td style="padding: 14px 16px; font-size: 0.85rem; color: #475569;">
+              <div>{{ m.student_id or '—' }}</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">{{ m.department or 'Campus' }}</div>
+            </td>
+
+            <!-- Registration Date -->
+            <td style="padding: 14px 16px; font-size: 0.85rem; color: #475569;">
+              {{ m.join_date or '—' }}
+            </td>
+
+            <!-- Status Badge -->
+            <td style="padding: 14px 16px;">
+              {% if m.status == 'Active' %}
+                <span class="badge badge-success" style="font-size: 0.75rem; padding: 4px 10px;">Active Member</span>
+              {% elif m.status == 'Expired' %}
+                <span class="badge badge-expired" style="font-size: 0.75rem; padding: 4px 10px;">Expired</span>
+              {% elif m.status == 'Pending' %}
+                <span class="badge badge-pending" style="font-size: 0.75rem; padding: 4px 10px;">Pending Dues</span>
+              {% else %}
+                <span class="badge badge-secondary" style="font-size: 0.75rem; padding: 4px 10px;">{{ m.status }}</span>
+              {% endif %}
+            </td>
+
+            <!-- Event Attendance Count -->
+            <td style="padding: 14px 16px;">
+              {% if m.attended_events_count and m.attended_events_count > 0 %}
+                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #047857; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 0.75rem; padding: 3px 8px;">
+                  🎟️ {{ m.attended_events_count }} Check-ins
+                </span>
+              {% else %}
+                <span style="font-size: 0.78rem; color: #94a3b8;">No events yet</span>
+              {% endif %}
+            </td>
+
+            <!-- Actions -->
+            <td style="padding: 14px 20px; text-align: right;">
+              {% if m.member_id %}
+              <a href="{{ url_for('member_view', member_id=m.member_id) }}" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
+                View Profile
+              </a>
+              {% else %}
+              <span style="font-size: 0.75rem; color: #94a3b8;">Club Roster</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding: 48px 24px; text-align: center; border: 1px dashed #cbd5e1; border-radius: 12px; background: #ffffff;">
+    <div style="font-size: 2.5rem; margin-bottom: 12px;">👥</div>
+    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0 0 6px 0;">
+      {% if search or status_filter %}No matching attendees found{% else %}No registered attendees in this club yet{% endif %}
+    </h3>
+    <p style="color: #64748b; font-size: 0.88rem; max-width: 440px; margin: 0 auto 20px auto;">
+      {% if search or status_filter %}
+        No club members match your query. Try clearing your search term or status filters.
+      {% else %}
+        Get started by registering campus students into {{ club.name }} using the button below.
+      {% endif %}
+    </p>
+    {% if search or status_filter %}
+    <a href="{{ url_for('admin_club_members', club_id=club.id) }}" class="btn btn-secondary btn-sm">Clear Active Filters</a>
+    {% else %}
+    <button type="button" class="btn btn-primary btn-sm" data-modal-target="register-member-modal">+ Register First Attendee</button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal: Register Member to Club -->
+<div id="register-member-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+  <div class="modal-box" style="max-width: 540px; width: 100%; background: #ffffff; border-radius: 12px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+      <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Register Attendee to {{ club.name }}</h3>
+      <button type="button" class="modal-close" style="background:none; border:none; font-size: 1.5rem; color: #64748b; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <form action="{{ url_for('admin_club_register_member', club_id=club.id) }}" method="POST">
+      {% if org_members %}
+      <!-- Quick Add from Existing Organization Members -->
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label" for="member_id" style="font-weight: 600; font-size: 0.85rem;">Select Existing Member (Optional)</label>
+        <select id="member_id" name="member_id" class="form-select" onchange="autoFillMemberDetails(this)">
+          <option value="">-- Or enter new attendee details below --</option>
+          {% for om in org_members %}
+          <option value="{{ om.id }}" data-name="{{ om.full_name }}" data-email="{{ om.email }}" data-sid="{{ om.student_id or '' }}" data-dept="{{ om.department or '' }}">
+            {{ om.full_name }} ({{ om.email }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label" for="full_name" style="font-weight: 600; font-size: 0.85rem;">Full Name *</label>
+        <input type="text" id="full_name" name="full_name" class="form-control" placeholder="e.g. Ananya Sharma" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label" for="email" style="font-weight: 600; font-size: 0.85rem;">Email Address *</label>
+        <input type="email" id="email" name="email" class="form-control" placeholder="e.g. ananya.sharma@example.edu" required>
+      </div>
+
+      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="student_id" style="font-weight: 600; font-size: 0.85rem;">Student ID</label>
+          <input type="text" id="student_id" name="student_id" class="form-control" placeholder="e.g. 1NT23CS045">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="department" style="font-weight: 600; font-size: 0.85rem;">Department</label>
+          <input type="text" id="department" name="department" class="form-control" placeholder="e.g. Computer Science">
+        </div>
+      </div>
+
+      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+        <div class="form-group">
+          <label class="form-label" for="status" style="font-weight: 600; font-size: 0.85rem;">Membership Status</label>
+          <select id="status" name="status" class="form-select">
+            <option value="Active" selected>Active Member</option>
+            <option value="Pending">Pending Dues</option>
+            <option value="Expired">Expired</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="join_date" style="font-weight: 600; font-size: 0.85rem;">Registration Date</label>
+          <input type="date" id="join_date" name="join_date" value="{{ today_str }}" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button type="submit" class="btn btn-primary btn-block" style="flex: 1;">Complete Registration</button>
+        <button type="button" data-modal-close class="btn btn-secondary" style="min-width: 90px;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+function autoFillMemberDetails(select) {
+  const opt = select.options[select.selectedIndex];
+  if (opt && opt.value) {
+    document.getElementById('full_name').value = opt.getAttribute('data-name') || '';
+    document.getElementById('email').value = opt.getAttribute('data-email') || '';
+    document.getElementById('student_id').value = opt.getAttribute('data-sid') || '';
+    document.getElementById('department').value = opt.getAttribute('data-dept') || '';
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}
