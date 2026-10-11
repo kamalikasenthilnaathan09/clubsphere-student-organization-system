@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}{{ cert.title }} — {{ cert.recipient_name }} | ClubSphere{% endblock %}
+{% block page_title %}Official Credential Verification{% endblock %}
+
+{% block content %}
+<div class="certificate-view-container" style="max-width: 900px; margin: 0 auto; padding-bottom: 40px;">
+
+  <!-- Action Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+    <a href="{{ url_for('certificates_wallet') }}" class="btn btn-secondary btn-sm">
+      &larr; Back to Wallet
+    </a>
+    <div style="display: flex; gap: 10px;">
+      <button onclick="window.print()" class="btn btn-secondary btn-sm">
+        🖨️ Print
+      </button>
+      <a href="{{ url_for('certificate_pdf_download', cert_ref=cert.certificate_ref) }}" class="btn btn-primary btn-sm">
+        📥 Download Official PDF
+      </a>
+    </div>
+  </div>
+
+  <!-- Certificate Framed Card -->
+  <div class="certificate-frame" style="background: #ffffff; border: 12px solid #0f172a; padding: 12px; border-radius: 8px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+    <div style="border: 2px solid #d97706; padding: 36px 32px; border-radius: 4px; text-align: center; background: radial-gradient(circle, #ffffff 0%, #f8fafc 100%); position: relative;">
+      
+      <!-- Top Brand -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px;">
+        <img src="{{ url_for('static', filename='images/odoo logo.jpg') }}" alt="Logo" style="height: 38px; width: auto; object-fit: contain;">
+        <span style="font-size: 0.95rem; font-weight: 800; letter-spacing: 2px; color: #475569; text-transform: uppercase;">
+          CLUBSPHERE STUDENT ORGANIZATION
+        </span>
+      </div>
+
+      <!-- Certificate Heading -->
+      <h1 style="font-size: 2.2rem; font-weight: 800; color: #0f172a; margin: 0 0 6px 0; letter-spacing: 1px; font-family: Georgia, serif;">
+        CERTIFICATE OF ACHIEVEMENT
+      </h1>
+      
+      <div style="width: 140px; height: 3px; background: #d97706; margin: 12px auto 20px auto;"></div>
+
+      <p style="font-size: 1.05rem; color: #64748b; font-style: italic; margin: 0 0 14px 0;">
+        This credential is proudly awarded to
+      </p>
+
+      <!-- Recipient -->
+      <div style="font-size: 2rem; font-weight: 800; color: #1e293b; margin: 12px 0; font-family: Georgia, serif; text-decoration: underline; text-decoration-color: #cbd5e1; text-underline-offset: 8px;">
+        {{ cert.recipient_name }}
+      </div>
+
+      <p style="font-size: 1rem; color: #475569; max-width: 650px; margin: 20px auto 10px auto; line-height: 1.6;">
+        in recognition of meritorious contribution, active engagement, and distinguished participation in
+      </p>
+
+      <!-- Activity Title -->
+      <div style="font-size: 1.35rem; font-weight: 700; color: #0284c7; margin-bottom: 8px;">
+        {{ cert.title }}
+      </div>
+
+      {% if cert.event_title %}
+      <div style="font-size: 0.95rem; color: #64748b; font-style: italic; margin-bottom: 24px;">
+        Organized under: <strong>{{ cert.event_title }}</strong>
+      </div>
+      {% endif %}
+
+      <!-- QR & Details Grid -->
+      <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: flex-end; text-align: left;">
+        
+        <!-- Left: Issuing Info -->
+        <div>
+          <div style="font-size: 0.82rem; color: #64748b;">Issuing Authority</div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">{{ cert.issuing_org }}</div>
+          <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">
+            Issue Date: <strong>{{ cert.issue_date }}</strong>
+          </div>
+          <div style="font-size: 0.8rem; color: #64748b;">
+            Type: <strong>{{ cert.activity_type }}</strong>
+          </div>
+        </div>
+
+        <!-- Center: QR Code Verification Badge -->
+        <div style="text-align: center;">
+          <div style="display: inline-block; padding: 6px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            {{ qr_svg | safe }}
+          </div>
+          <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px; font-weight: 600;">
+            SCAN TO VERIFY
+          </div>
+        </div>
+
+        <!-- Right: Verification ID -->
+        <div style="text-align: right;">
+          <div style="font-size: 0.82rem; color: #64748b;">Certificate Reference</div>
+          <div style="font-family: monospace; font-size: 1rem; font-weight: 800; color: #0f172a;">
+            {{ cert.certificate_ref }}
+          </div>
+          <div style="margin-top: 6px;">
+            <span class="badge badge-success" style="font-size: 0.75rem;">Status: {{ cert.status }}</span>
+          </div>
+          <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">
+            Recorded on ClubSphere Extracurricular Ledger
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

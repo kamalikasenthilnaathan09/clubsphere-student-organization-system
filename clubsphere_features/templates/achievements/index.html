@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}Achievements & Points — ClubSphere{% endblock %}
+{% block page_title %}Achievement Points & Extracurricular Credits{% endblock %}
+
+{% block content %}
+<div class="achievements-page-container">
+
+  <!-- Clear Disclaimer Banner regarding Academic Credits vs Engagement Credits -->
+  <div class="card" style="margin-bottom: 24px; border-left: 4px solid #f59e0b; background: #fffbeb;">
+    <div class="card-body" style="padding: 14px 18px;">
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <span style="font-size: 1.4rem; line-height: 1;">📌</span>
+        <div>
+          <strong style="color: #92400e; font-size: 0.95rem;">Extracurricular Activity Credits Disclaimer</strong>
+          <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #78350f; line-height: 1.45;">
+            ClubSphere achievement points represent extracurricular student involvement, campus event attendance, club volunteerism, and leadership honors. 
+            <strong>These credits are distinct and separate from official university academic curriculum credits, degree graduation requirements, and institutional GPA calculations.</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards Header -->
+  <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 26px;">
+    <div class="card" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #fff;">
+      <div class="card-body" style="padding: 20px;">
+        <div style="font-size: 0.82rem; color: #c7d2fe; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Total Points Earned</div>
+        <div style="font-size: 2.3rem; font-weight: 800; color: #fbbf24; margin-top: 4px; display: flex; align-items: baseline; gap: 8px;">
+          <span>{{ total_points }}</span>
+          <span style="font-size: 0.95rem; font-weight: 600; color: #e0e7ff;">PTS</span>
+        </div>
+        <div style="font-size: 0.8rem; color: #a5b4fc; margin-top: 6px;">Extracurricular Activity Wallet</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="padding: 20px;">
+        <div style="font-size: 0.82rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Badges Unlocked</div>
+        <div style="font-size: 2.3rem; font-weight: 800; color: #7c3aed; margin-top: 4px;">
+          {{ unlocked_count }} <span style="font-size: 1.1rem; color: #94a3b8; font-weight: 500;">/ {{ badges | length }}</span>
+        </div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 6px;">Milestone honors achieved</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="padding: 20px;">
+        <div style="font-size: 0.82rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Next Tier Target</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #0284c7; margin-top: 10px;">
+          {% if total_points < 50 %}
+            {{ 50 - total_points }} pts to Point Master
+          {% elif total_points < 150 %}
+            {{ 150 - total_points }} pts to Campus Legend
+          {% else %}
+            Top Tier Achieved 👑
+          {% endif %}
+        </div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 8px;">Keep attending events & volunteering!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badges Showcase -->
+  <div class="card" style="margin-bottom: 28px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 class="card-title" style="margin: 0;">Student Achievement Badges</h3>
+        <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b;">Unlock badges through event attendance, feedback, volunteer tasks, and club involvement.</p>
+      </div>
+      <span class="badge badge-success">{{ unlocked_count }} Unlocked</span>
+    </div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
+        {% for badge in badges %}
+        <div class="badge-card" style="border: 1px solid {% if badge.unlocked %}#c7d2fe{% else %}#e2e8f0{% endif %}; background: {% if badge.unlocked %}#f8fafc{% else %}#f8fafc80{% endif %}; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; opacity: {% if badge.unlocked %}1{% else %}0.65{% endif %};">
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <span style="font-size: 2rem; line-height: 1;">{{ badge.icon }}</span>
+              {% if badge.unlocked %}
+              <span class="badge badge-success" style="font-size: 0.72rem;">Unlocked</span>
+              {% else %}
+              <span class="badge" style="background:#e2e8f0; color:#64748b; font-size: 0.72rem;">Locked</span>
+              {% endif %}
+            </div>
+            <h4 style="margin: 0 0 4px 0; font-size: 1rem; color: #0f172a; font-weight: 700;">{{ badge.title }}</h4>
+            <p style="margin: 0 0 10px 0; font-size: 0.82rem; color: #475569; line-height: 1.4;">{{ badge.description }}</p>
+          </div>
+          <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+            Target: {{ badge.criterion }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+    <!-- Extracurricular Leaderboard -->
+    <div class="card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 class="card-title" style="margin: 0;">🏆 Campus Engagement Leaderboard</h3>
+          <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b;">Top participating students across all clubs</p>
+        </div>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        {% if leaderboard %}
+        <div style="overflow-x: auto;">
+          <table class="table" style="margin: 0;">
+            <thead>
+              <tr>
+                <th style="width: 50px;">Rank</th>
+                <th>Student</th>
+                <th>Department</th>
+                <th style="text-align: right;">Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in leaderboard %}
+              <tr {% if entry.is_me %}style="background: #eef2ff; font-weight: 600;"{% endif %}>
+                <td>
+                  {% if entry.rank == 1 %}
+                    <span style="font-size: 1.1rem;">🥇</span>
+                  {% elif entry.rank == 2 %}
+                    <span style="font-size: 1.1rem;">🥈</span>
+                  {% elif entry.rank == 3 %}
+                    <span style="font-size: 1.1rem;">🥉</span>
+                  {% else %}
+                    <span style="font-weight: 700; color: #64748b;">#{{ entry.rank }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div style="color: #0f172a; font-weight: 600;">
+                    {{ entry.display_name }}
+                    {% if entry.is_me %}<span class="badge badge-primary" style="font-size: 0.68rem; margin-left: 4px;">YOU</span>{% endif %}
+                  </div>
+                  <div style="font-size: 0.78rem; color: #64748b;">{{ entry.display_username }}</div>
+                </td>
+                <td style="font-size: 0.82rem; color: #475569;">
+                  {{ entry.department }}
+                </td>
+                <td style="text-align: right; font-weight: 800; color: #7c3aed; font-size: 0.95rem;">
+                  {{ entry.total_points }} pts
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div style="padding: 30px; text-align: center; color: #64748b;">
+          No points recorded yet on the leaderboard.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Points Activity Log -->
+    <div class="card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="card-title" style="margin: 0;">📜 My Activity & Points Ledger</h3>
+        <span class="badge badge-info">{{ history | length }} Transactions</span>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        {% if history %}
+        <div style="overflow-x: auto; max-height: 480px; overflow-y: auto;">
+          <table class="table" style="margin: 0;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Activity Description</th>
+                <th style="text-align: right;">Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in history %}
+              <tr>
+                <td style="font-size: 0.8rem; color: #64748b; white-space: nowrap;">
+                  {{ item.created_at[:10] }}
+                </td>
+                <td>
+                  <div style="font-weight: 600; color: #0f172a;">{{ item.reason }}</div>
+                  <div style="font-size: 0.76rem; color: #64748b;">
+                    Type: <code style="background: #f1f5f9; padding: 2px 4px; border-radius: 3px;">{{ item.source_type }}</code>
+                  </div>
+                </td>
+                <td style="text-align: right; font-weight: 800; color: #16a34a; white-space: nowrap;">
+                  +{{ item.points }} pts
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div style="padding: 40px 20px; text-align: center; color: #64748b;">
+          <p style="margin: 0 0 6px 0; font-size: 1.05rem;">No points history yet.</p>
+          <p style="margin: 0; font-size: 0.85rem;">Check in at campus events, submit feedback, or volunteer to earn points!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

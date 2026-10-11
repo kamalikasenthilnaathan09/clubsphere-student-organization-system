@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}My Club Membership Profile — ClubSphere{% endblock %}
+{% block page_title %}My Student Club Membership{% endblock %}
+
+{% block content %}
+<div class="my-membership-container" style="max-width: 950px; margin: 0 auto;">
+
+  {% if member %}
+  <!-- Membership Profile Card -->
+  <div class="card" style="margin-bottom: 24px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);">
+    <!-- Digital ID Card Header Banner -->
+    <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%); color: #ffffff; padding: 28px 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: #ffffff25; border: 2px solid #ffffff60; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700; color: #ffffff;">
+            {{ (member.full_name[:1] if member.full_name else 'S') | upper }}
+          </div>
+          <div>
+            <span style="font-size: 0.76rem; letter-spacing: 1px; color: #c7d2fe; text-transform: uppercase; font-weight: 700;">OFFICIAL STUDENT MEMBERSHIP CARD</span>
+            <h2 style="margin: 2px 0 0 0; font-size: 1.6rem; font-weight: 800; color: #ffffff;">{{ member.full_name }}</h2>
+            <div style="font-size: 0.88rem; color: #e0e7ff; margin-top: 4px;">
+              {{ member.department or 'Campus Student' }} {% if member.student_id %}&bull; ID: <strong>{{ member.student_id }}</strong>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          <div style="font-family: monospace; font-size: 1.1rem; font-weight: 800; background: #ffffff20; padding: 6px 14px; border-radius: 6px; border: 1px solid #ffffff30; display: inline-block;">
+            {{ member.member_code }}
+          </div>
+          <div style="margin-top: 8px;">
+            {% if member.status == 'Active' %}
+              <span class="badge badge-success" style="font-size: 0.8rem; padding: 4px 10px;">Active Member</span>
+            {% elif member.status == 'Expired' %}
+              <span class="badge" style="background:#fee2e2; color:#991b1b; font-size: 0.8rem;">Membership Expired</span>
+            {% else %}
+              <span class="badge badge-secondary" style="font-size: 0.8rem;">{{ member.status }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Membership Details Grid -->
+    <div class="card-body" style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 24px;">
+        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Membership Type</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-top: 4px;">{{ member.membership_type }} Tier</div>
+        </div>
+
+        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Join Date</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-top: 4px;">{{ member.join_date }}</div>
+        </div>
+
+        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Expiration Date</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-top: 4px;">{{ member.expiry_date }}</div>
+        </div>
+
+        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Renewal Status</div>
+          <div style="font-size: 1.1rem; font-weight: 700; margin-top: 4px; color: {% if is_expired %}#dc2626{% elif is_expiring_soon %}#d97706{% else %}#16a34a{% endif %};">
+            {% if is_expired %}
+              Expired
+            {% elif days_remaining is not none %}
+              {{ days_remaining }} days remaining
+            {% else %}
+              Active
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if is_expiring_soon or is_expired %}
+      <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <strong style="color: #92400e; font-size: 0.95rem;">
+            {% if is_expired %}Your Club Membership Has Expired{% else %}Membership Renewal Upcoming{% endif %}
+          </strong>
+          <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #78350f;">
+            Renew to retain discounted event tickets, voting rights, and official certificates.
+          </p>
+        </div>
+        <a href="mailto:treasurer@clubsphere.org?subject=Membership%20Renewal%20Request%20{{ member.member_code }}" class="btn btn-primary btn-sm">
+          💳 Request Renewal
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- Activity Summary KPIs -->
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0 0 14px 0;">Student Extracurricular Engagement</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 26px;">
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: #7c3aed;">{{ attended_events_count }}</div>
+          <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Events Attended</div>
+        </div>
+
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: #0284c7;">{{ volunteer_tasks_count }}</div>
+          <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Volunteer Tasks Done</div>
+        </div>
+
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: #d97706;">{{ total_points }}</div>
+          <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Achievement Points</div>
+        </div>
+
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 800; color: #16a34a;">{{ certificates_count }}</div>
+          <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Certificates Earned</div>
+        </div>
+      </div>
+
+      <!-- Recent Event Registrations -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0;">My Event Registrations</h3>
+        <a href="{{ url_for('events_list') }}" class="btn btn-secondary btn-sm">Explore Events</a>
+      </div>
+
+      {% if my_tickets %}
+      <div style="overflow-x: auto;">
+        <table class="table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th>Ticket Ref</th>
+              <th>Event Title</th>
+              <th>Date & Venue</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in my_tickets %}
+            <tr>
+              <td><code style="font-weight: 600;">{{ t.ticket_ref }}</code></td>
+              <td style="font-weight: 600; color: #0f172a;">{{ t.event_title }}</td>
+              <td style="font-size: 0.82rem; color: #64748b;">
+                {{ t.event_date }} &bull; {{ t.venue }}
+              </td>
+              <td>
+                {% if t.checked_in == 1 %}
+                  <span class="badge badge-success">Attended</span>
+                {% else %}
+                  <span class="badge" style="background:#e0f2fe; color:#0369a1;">Confirmed</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color: #64748b; font-size: 0.85rem; margin: 0;">No tickets registered yet. Check the events section to sign up for upcoming campus workshops and competitions!</p>
+      {% endif %}
+
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Not yet a registered member in members table -->
+  <div class="card" style="margin-bottom: 24px; text-align: center; padding: 40px 24px;">
+    <div style="font-size: 3rem; margin-bottom: 12px;">🪪</div>
+    <h2 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0 0 8px 0;">
+      Activate Your Official Student Club Membership
+    </h2>
+    <p style="max-width: 600px; margin: 0 auto 24px auto; font-size: 0.95rem; color: #475569; line-height: 1.5;">
+      You are currently signed in as a student user. Join the official student organization to access exclusive member discounts, voting rights in club elections, priority workshop seats, and verified achievement credentials!
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 750px; margin: 0 auto 28px auto; text-align: left;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 1.3rem; margin-bottom: 4px;">🎟️</div>
+        <strong style="color: #0f172a;">Discounted Tickets</strong>
+        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">Enjoy exclusive member pricing across all campus hackathons and seminars.</p>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 1.3rem; margin-bottom: 4px;">🎓</div>
+        <strong style="color: #0f172a;">Verified Certificates</strong>
+        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">Earn official credentials and points on the extracurricular ledger.</p>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 1.3rem; margin-bottom: 4px;">👕</div>
+        <strong style="color: #0f172a;">Club Merchandise</strong>
+        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">Access official hoodies, decals, and priority collection.</p>
+      </div>
+    </div>
+
+    <div>
+      <a href="{{ url_for('profile') }}" class="btn btn-secondary" style="margin-right: 10px;">
+        Update Student Profile
+      </a>
+      <a href="{{ url_for('events_list') }}" class="btn btn-primary">
+        Browse Active Events
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

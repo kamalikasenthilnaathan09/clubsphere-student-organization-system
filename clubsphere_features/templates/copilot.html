@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+{% block title %}Ask ClubSphere — Club AI Assistant{% endblock %}
+{% block page_title %}Ask ClubSphere{% endblock %}
+
+{% block content %}
+<div class="copilot-container">
+
+  <!-- Copilot Header Bar -->
+  <div class="copilot-header-card">
+    <div class="copilot-header-left">
+      <div class="copilot-avatar">✨</div>
+      <div>
+        <div class="copilot-title-row">
+          <h2 class="copilot-title">Club AI Assistant</h2>
+          <span class="user-role-badge" style="font-size: 0.72rem;">{{ current_user.role }}</span>
+        </div>
+        <p class="copilot-desc">
+          Ask questions about upcoming events, ticket registration, schedules, announcements, and your membership status.
+        </p>
+      </div>
+    </div>
+
+    <div class="copilot-header-right">
+      <button type="button" id="btn-clear-chat" class="copilot-clear-btn" title="Start a fresh conversation">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1 4 1 10 7 10"></polyline>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+        </svg>
+        <span>New Chat</span>
+      </button>
+
+      {% if ai_config %}
+      <div class="copilot-provider-badge active" title="Generative completions enabled">
+        <span class="status-dot green"></span>
+        <span>AI: {{ ai_config.provider | title }}</span>
+      </div>
+      {% else %}
+      <div class="copilot-provider-badge deterministic" title="Operating with deterministic database engine">
+        <span class="status-dot yellow"></span>
+        <span>Deterministic Mode (No API Key)</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Suggested Prompts Bar -->
+  <div class="copilot-suggested-section">
+    <div class="suggested-title">💡 Suggested Questions:</div>
+    <div class="suggested-chips">
+      <button type="button" class="copilot-chip" data-prompt="What events are coming up?">
+        <span>📅</span> What events are coming up?
+      </button>
+      <button type="button" class="copilot-chip" data-prompt="How can I register for an event?">
+        <span>🎟️</span> How can I register for an event?
+      </button>
+      <button type="button" class="copilot-chip" data-prompt="What are the upcoming event dates?">
+        <span>🗓️</span> What are the upcoming event dates?
+      </button>
+      <button type="button" class="copilot-chip" data-prompt="Show the latest club announcements.">
+        <span>📢</span> Show the latest club announcements.
+      </button>
+      <button type="button" class="copilot-chip" data-prompt="How do I check my membership status?">
+        <span>👤</span> How do I check my membership status?
+      </button>
+      {% if current_user.role == 'Treasurer' %}
+      <button type="button" class="copilot-chip" data-prompt="Explain our income, expenses, and net cash.">
+        <span>💰</span> Explain our income, expenses, and net cash.
+      </button>
+      {% endif %}
+      {% if current_user.role in ['Event Organizer', 'Volunteer'] %}
+      <button type="button" class="copilot-chip" data-prompt="Identify overdue tasks and upcoming deadlines.">
+        <span>⏰</span> Identify overdue tasks and upcoming deadlines.
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chat Stream Container -->
+  <div class="copilot-chat-card">
+    <div class="copilot-chat-messages" id="chat-messages">
+
+      <!-- Initial Greeting -->
+      <div class="chat-message bot" id="initial-bot-greeting">
+        <div class="message-avatar">✨</div>
+        <div class="message-content">
+          <div class="message-sender">Club AI Assistant</div>
+          <div class="message-body">
+            <p>Hello <strong>{{ current_user.full_name }}</strong>! I am your ClubSphere AI Assistant.</p>
+            <p>I pull verified information directly from your club's database—including upcoming event schedules, ticket registration details, club announcements, and your membership status—filtered safely according to your verified role (<strong>{{ current_user.role }}</strong>).</p>
+            <p>Select one of the suggested questions above or type your question below to begin!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Server-rendered initial prompt if passed via query -->
+      {% if initial_prompt and initial_response %}
+      <div class="chat-message user">
+        <div class="message-content">
+          <div class="message-sender">{{ current_user.full_name }}</div>
+          <div class="message-body">
+            <p>{{ initial_prompt }}</p>
+          </div>
+        </div>
+        <div class="message-avatar user-avatar">{{ current_user.full_name[:1] }}</div>
+      </div>
+
+      <div class="chat-message bot">
+        <div class="message-avatar">✨</div>
+        <div class="message-content">
+          <div class="message-sender">
+            Club Copilot
+            <span class="provider-pill">via {{ initial_response.provider }}</span>
+          </div>
+          <div class="message-body formatted-markdown" data-raw="{{ initial_response.response }}">
+            {{ initial_response.response }}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Typing Indicator -->
+    <div class="copilot-typing" id="typing-indicator" style="display: none;">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <span class="typing-text">Copilot is inspecting database records...</span>
+    </div>
+
+    <!-- Input Box -->
+    <div class="copilot-input-area">
+      <form id="copilot-form" class="copilot-form">
+        <div class="copilot-input-wrap">
+          <input type="text"
+                 id="copilot-input"
+                 class="copilot-input"
+                 placeholder="Ask about events, schedules, announcements, registration, or membership..."
+                 autocomplete="off"
+                 required>
+          <button type="submit" id="btn-submit" class="copilot-send-btn" aria-label="Send message">
+            <span>Send</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </form>
+      <div class="copilot-disclaimer">
+        🔒 <strong>Read-Only Safety Guarantee</strong>: Club Copilot references verified SQLite ledger records. It cannot modify records, approve expenses, issue payments, or elevate roles.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('copilot-form');
+  const input = document.getElementById('copilot-input');
+  const chatMessages = document.getElementById('chat-messages');
+  const typing = document.getElementById('typing-indicator');
+  const sendBtn = document.getElementById('btn-submit');
+  const chips = document.querySelectorAll('.copilot-chip');
+  const clearBtn = document.getElementById('btn-clear-chat');
+
+  // Maintain client-side conversation history for multi-turn contextual dialog
+  const chatHistory = [];
+
+  {% if initial_prompt and initial_response and initial_response.status == 'ok' %}
+  chatHistory.push({ role: 'user', content: {{ initial_prompt | tojson }} });
+  chatHistory.push({ role: 'assistant', content: {{ initial_response.response | tojson }} });
+  {% endif %}
+
+  // Format pre-rendered markdown on load
+  document.querySelectorAll('.formatted-markdown').forEach(el => {
+    const raw = el.getAttribute('data-raw') || el.innerText;
+    el.innerHTML = renderMarkdown(raw);
+  });
+
+  scrollToBottom();
+  if (input) input.focus();
+
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Safe and comprehensive markdown parser for chat bubbles
+  function renderMarkdown(text) {
+    if (!text) return '';
+
+    // 1. Escape HTML special characters
+    let str = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    // 2. Extract fenced code blocks ```...```
+    const codeBlocks = [];
+    str = str.replace(/```([a-z0-9_-]*)\n?([\s\S]*?)```/gi, function (_, lang, code) {
+      const token = '___CODEBLOCK_' + codeBlocks.length + '___';
+      codeBlocks.push('<pre class="chat-code-block"><code>' + code.trim() + '</code></pre>');
+      return token;
+    });
+
+    // 3. Extract inline code `...`
+    const inlineCodes = [];
+    str = str.replace(/`([^`\n]+)`/g, function (_, code) {
+      const token = '___INLINECODE_' + inlineCodes.length + '___';
+      inlineCodes.push('<code class="chat-inline-code">' + code + '</code>');
+      return token;
+    });
+
+    // 4. Line-by-line parsing for lists, blockquotes, and headings
+    const lines = str.split('\n');
+    const out = [];
+    let inUl = false;
+    let inOl = false;
+
+    function closeLists() {
+      if (inUl) { out.push('</ul>'); inUl = false; }
+      if (inOl) { out.push('</ol>'); inOl = false; }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Empty line closes lists
+      if (!line.trim()) {
+        closeLists();
+        out.push('');
+        continue;
+      }
+
+      // Headings
+      const h3Match = line.match(/^###\s+(.+)$/);
+      if (h3Match) {
+        closeLists();
+        out.push('<h4 class="chat-h4">' + h3Match[1] + '</h4>');
+        continue;
+      }
+      const h2Match = line.match(/^##?\s+(.+)$/);
+      if (h2Match) {
+        closeLists();
+        out.push('<h3 class="chat-h3">' + h2Match[1] + '</h3>');
+        continue;
+      }
+
+      // Blockquotes
+      const bqMatch = line.match(/^&gt;\s?(.*)$/);
+      if (bqMatch) {
+        closeLists();
+        out.push('<blockquote class="chat-quote">' + bqMatch[1] + '</blockquote>');
+        continue;
+      }
+
+      // Unordered lists (- or * or •)
+      const ulMatch = line.match(/^[-*•]\s+(.+)$/);
+      if (ulMatch) {
+        if (inOl) { out.push('</ol>'); inOl = false; }
+        if (!inUl) { out.push('<ul class="chat-ul">'); inUl = true; }
+        out.push('<li class="chat-li">' + ulMatch[1] + '</li>');
+        continue;
+      }
+
+      // Ordered lists (1. 2. etc)
+      const olMatch = line.match(/^(\d+)\.\s+(.+)$/);
+      if (olMatch) {
+        if (inUl) { out.push('</ul>'); inUl = false; }
+        if (!inOl) { out.push('<ol class="chat-ol">'); inOl = true; }
+        out.push('<li class="chat-li">' + olMatch[2] + '</li>');
+        continue;
+      }
+
+      // Regular line
+      closeLists();
+      out.push(line);
+    }
+    closeLists();
+
+    let processed = out.join('\n');
+
+    // 5. Bold **text**
+    processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+    // 6. Italics *text* or _text_
+    processed = processed.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    processed = processed.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+
+    // 7. Links [text](url) - restricted to internal routes or http(s)
+    processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
+      const cleanUrl = url.trim();
+      if (cleanUrl.startsWith('/') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://')) {
+        return '<a href="' + cleanUrl + '" class="chat-link" target="_blank" rel="noopener">' + label + '</a>';
+      }
+      return label;
+    });
+
+    // 8. Restore inline code
+    inlineCodes.forEach((code, idx) => {
+      processed = processed.replace('___INLINECODE_' + idx + '___', code);
+    });
+
+    // 9. Restore code blocks
+    codeBlocks.forEach((code, idx) => {
+      processed = processed.replace('___CODEBLOCK_' + idx + '___', code);
+    });
+
+    // 10. Split into paragraphs by double newlines
+    const paragraphs = processed.split(/\n\n+/);
+    const htmlParts = paragraphs.map(p => {
+      p = p.trim();
+      if (!p) return '';
+      if (/^<(ul|ol|pre|blockquote|h3|h4)/i.test(p)) {
+        return p;
+      }
+      return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+    });
+
+    return htmlParts.filter(Boolean).join('');
+  }
+
+  function appendUserMessage(text) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-message user';
+    msgDiv.innerHTML = `
+      <div class="message-content">
+        <div class="message-sender">{{ current_user.full_name }}</div>
+        <div class="message-body"><p>${escapeHtml(text)}</p></div>
+      </div>
+      <div class="message-avatar user-avatar">{{ current_user.full_name[:1] }}</div>
+    `;
+    chatMessages.appendChild(msgDiv);
+    scrollToBottom();
+  }
+
+  function appendBotMessage(text, provider) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-message bot';
+    const provBadge = provider ? `<span class="provider-pill">via ${escapeHtml(provider)}</span>` : '';
+    msgDiv.innerHTML = `
+      <div class="message-avatar">✨</div>
+      <div class="message-content">
+        <div class="message-sender">
+          Club Copilot ${provBadge}
+        </div>
+        <div class="message-body">
+          ${renderMarkdown(text)}
+        </div>
+      </div>
+    `;
+    chatMessages.appendChild(msgDiv);
+    scrollToBottom();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str;
+    return div.innerHTML;
+  }
+
+  async function sendMessage(text) {
+    const cleanText = text.trim();
+    if (!cleanText) return;
+
+    input.value = '';
+    appendUserMessage(cleanText);
+
+    // Save user turn in history
+    chatHistory.push({ role: 'user', content: cleanText });
+
+    typing.style.display = 'flex';
+    sendBtn.disabled = true;
+    scrollToBottom();
+
+    try {
+      const res = await fetch("{{ url_for('copilot_ask') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: cleanText,
+          history: chatHistory.slice(-8)
+        })
+      });
+
+      const data = await res.json();
+      typing.style.display = 'none';
+      sendBtn.disabled = false;
+
+      if (data.status === 'ok') {
+        appendBotMessage(data.response, data.provider);
+        // Save assistant turn in history
+        chatHistory.push({ role: 'assistant', content: data.response });
+      } else {
+        appendBotMessage("⚠️ " + (data.message || "An unexpected error occurred."), "System");
+      }
+    } catch (err) {
+      typing.style.display = 'none';
+      sendBtn.disabled = false;
+      appendBotMessage("⚠️ Network error: Could not connect to Copilot service.", "System");
+    } finally {
+      if (input) input.focus();
+    }
+  }
+
+  // Handle form submission
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    sendMessage(input.value);
+  });
+
+  // Handle suggested chip clicks
+  chips.forEach(chip => {
+    chip.addEventListener('click', function () {
+      const prompt = this.getAttribute('data-prompt');
+      if (prompt) {
+        sendMessage(prompt);
+      }
+    });
+  });
+
+  // Handle Clear / New Chat
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async function () {
+      try {
+        await fetch("{{ url_for('copilot_clear') }}", { method: 'POST' });
+      } catch (e) {
+        // Ignore network errors on clear
+      }
+      chatHistory.length = 0;
+      // Retain only the initial greeting bubble
+      const initialGreeting = document.getElementById('initial-bot-greeting');
+      chatMessages.innerHTML = '';
+      if (initialGreeting) {
+        chatMessages.appendChild(initialGreeting);
+      }
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

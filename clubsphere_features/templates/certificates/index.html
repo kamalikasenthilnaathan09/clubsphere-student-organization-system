@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Certificates & Achievement Wallet — ClubSphere{% endblock %}
+{% block page_title %}Certificates & Credential Wallet{% endblock %}
+
+{% block content %}
+<div class="certificates-page-container">
+
+  <!-- Info Header -->
+  <div class="card" style="margin-bottom: 24px; border-left: 4px solid #0284c7;">
+    <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 6px 0; color: #0f172a;">Official Student Credentials Wallet</h2>
+        <p style="margin: 0; font-size: 0.9rem; color: #475569;">
+          Verified certificates issued by ClubSphere for event participation, workshop completions, and student leadership honors.
+          Each issued certificate awards <strong>+50 engagement points</strong>.
+        </p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('achievements_dashboard') }}" class="btn btn-secondary btn-sm">🏆 View Achievements</a>
+        <a href="{{ url_for('my_memberships') }}" class="btn btn-secondary btn-sm">🪪 My Membership</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Certificates Wallet Grid -->
+  <div class="card" style="margin-bottom: 28px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="card-title" style="margin: 0;">My Issued Certificates</h3>
+      <span class="badge badge-primary">{{ my_certs | length }} Credentials</span>
+    </div>
+    <div class="card-body">
+      {% if my_certs %}
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+        {% for cert in my_certs %}
+        <div class="certificate-card" style="border: 2px solid #e2e8f0; border-radius: 10px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.72rem; letter-spacing: 0.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">CLUBSPHERE CREDENTIAL</span>
+              <span class="badge badge-success" style="font-size: 0.7rem;">{{ cert.status }}</span>
+            </div>
+            <h4 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #f8fafc;">{{ cert.title }}</h4>
+          </div>
+          
+          <div style="padding: 18px; flex: 1;">
+            <div style="font-size: 0.82rem; color: #64748b; margin-bottom: 4px;">Presented To:</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-bottom: 12px;">{{ cert.recipient_name }}</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; margin-bottom: 14px; background: #f8fafc; padding: 10px; border-radius: 6px;">
+              <div>
+                <span style="color: #64748b;">Issued:</span>
+                <strong style="display: block; color: #1e293b;">{{ cert.issue_date }}</strong>
+              </div>
+              <div>
+                <span style="color: #64748b;">Category:</span>
+                <strong style="display: block; color: #1e293b;">{{ cert.activity_type }}</strong>
+              </div>
+            </div>
+
+            {% if cert.event_title %}
+            <div style="font-size: 0.82rem; color: #475569; margin-bottom: 12px;">
+              <strong>Event:</strong> {{ cert.event_title }}
+            </div>
+            {% endif %}
+
+            <div style="font-family: monospace; font-size: 0.76rem; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+              ID: {{ cert.certificate_ref }}
+            </div>
+          </div>
+
+          <div style="padding: 14px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
+            <a href="{{ url_for('certificate_view', cert_ref=cert.certificate_ref) }}" class="btn btn-secondary btn-sm" style="flex: 1; text-align: center;">
+              🔍 View Web
+            </a>
+            <a href="{{ url_for('certificate_pdf_download', cert_ref=cert.certificate_ref) }}" class="btn btn-primary btn-sm" style="flex: 1; text-align: center;">
+              📥 PDF Download
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding: 40px 20px; text-align: center; color: #64748b;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">🎓</div>
+        <p style="margin: 0 0 6px 0; font-size: 1.1rem; font-weight: 600; color: #1e293b;">No certificates in your wallet yet.</p>
+        <p style="margin: 0; font-size: 0.85rem;">Participate in campus club workshops, hackathons, and volunteer activities to earn official credentials!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Staff Issuance Console (Administrator & Event Organizer) -->
+  {% if is_staff %}
+  <div class="card" style="margin-top: 32px; border-top: 3px solid #7c3aed;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <h3 class="card-title" style="margin: 0;">🛡️ Issue Official Student Certificate</h3>
+        <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b;">Issue verifiable digital credentials for event completion or student leadership.</p>
+      </div>
+      <span class="badge badge-secondary">{{ all_certs | length }} Total Org Certificates</span>
+    </div>
+    <div class="card-body">
+      <form action="{{ url_for('certificates_issue') }}" method="POST" style="margin-bottom: 24px;">
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="user_id">Recipient Student Account <span style="color:#ef4444;">*</span></label>
+            <select name="user_id" id="user_id" class="form-control" required>
+              <option value="" disabled selected>Select student user...</option>
+              {% for u in active_users %}
+              <option value="{{ u.id }}">{{ u.full_name }} ({{ u.email }}) — {{ u.role }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="title">Certificate Title <span style="color:#ef4444;">*</span></label>
+            <input type="text" name="title" id="title" class="form-control" placeholder="e.g. Certificate of Participation" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="activity_type">Activity Type</label>
+            <select name="activity_type" id="activity_type" class="form-control">
+              <option value="Event Participation">Event Participation</option>
+              <option value="Volunteer Leadership">Volunteer Leadership</option>
+              <option value="Workshop Completion">Workshop Completion</option>
+              <option value="Hackathon Achievement">Hackathon Achievement</option>
+              <option value="Merit Honor">Merit Honor</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label class="form-label" for="event_id">Associated Event (Optional)</label>
+            <select name="event_id" id="event_id" class="form-control">
+              <option value="">None / General Organization Award</option>
+              {% for ev in events %}
+              <option value="{{ ev.id }}">{{ ev.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="recipient_name">Custom Recipient Name (Optional)</label>
+            <input type="text" name="recipient_name" id="recipient_name" class="form-control" placeholder="Leave blank to use student account name">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="issuing_org">Issuing Authority</label>
+            <input type="text" name="issuing_org" id="issuing_org" class="form-control" value="ClubSphere — Student Organization">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          🎓 Issue Official Certificate & Award 50 Points
+        </button>
+      </form>
+
+      <!-- Table of All Issued Org Certificates -->
+      <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin: 24px 0 12px 0;">All Issued Organization Certificates</h4>
+      {% if all_certs %}
+      <div style="overflow-x: auto;">
+        <table class="table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Recipient</th>
+              <th>Certificate Title</th>
+              <th>Activity & Event</th>
+              <th>Issue Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in all_certs %}
+            <tr>
+              <td><code style="font-size: 0.8rem; font-weight: 600;">{{ c.certificate_ref }}</code></td>
+              <td>
+                <div style="font-weight: 600; color: #0f172a;">{{ c.recipient_name }}</div>
+                <div style="font-size: 0.78rem; color: #64748b;">{{ c.recipient_email }}</div>
+              </td>
+              <td><strong>{{ c.title }}</strong></td>
+              <td>
+                <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ c.activity_type }}</span>
+                {% if c.event_title %}<div style="font-size: 0.78rem; color: #475569;">{{ c.event_title }}</div>{% endif %}
+              </td>
+              <td style="font-size: 0.82rem; color: #64748b;">{{ c.issue_date }}</td>
+              <td style="white-space: nowrap;">
+                <a href="{{ url_for('certificate_view', cert_ref=c.certificate_ref) }}" class="btn btn-secondary btn-sm" target="_blank">View</a>
+                <a href="{{ url_for('certificate_pdf_download', cert_ref=c.certificate_ref) }}" class="btn btn-primary btn-sm">PDF</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color: #64748b; font-size: 0.85rem; margin: 0;">No certificates have been issued yet across the organization.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
