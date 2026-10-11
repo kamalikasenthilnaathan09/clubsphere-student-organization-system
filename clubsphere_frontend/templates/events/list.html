@@ -1,0 +1,427 @@
+{% extends 'base.html' %}
+{% block title %}Events & Tickets — ClubSphere{% endblock %}
+{% block page_title %}Events & Tickets{% endblock %}
+
+{% block top_actions %}
+<div style="display: flex; gap: 8px; align-items: center;">
+  {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+  <a href="{{ url_for('events_new') }}" class="btn btn-primary btn-sm">+ Create Event</a>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header Section (Reference Design) -->
+<div class="events-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+  <div>
+    <h2 style="font-size: 1.6rem; font-weight: 800; color: #0f172a; margin: 0 0 4px; letter-spacing: -0.3px;">Events &amp; Tickets</h2>
+    <p style="font-size: 0.9rem; color: #64748b; margin: 0;">Explore upcoming student organization events, workshops, and campus activities.</p>
+  </div>
+
+  <div style="display: flex; gap: 12px; align-items: center;">
+    {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+    <a href="{{ url_for('events_new') }}" class="btn btn-primary btn-sm" style="font-weight: 600;">+ Create Event</a>
+    {% endif %}
+
+    <!-- View Mode Switcher -->
+    <div class="view-toggle-group">
+      <a href="{{ url_for('events_list', view='cards', status=status_filter, search=search) }}" 
+         class="view-toggle-btn {% if view_mode != 'table' %}active{% endif %}" title="Card Grid View">
+        🎴 Card View
+      </a>
+      <a href="{{ url_for('events_list', view='table', status=status_filter, search=search) }}" 
+         class="view-toggle-btn {% if view_mode == 'table' %}active{% endif %}" title="Tabular View">
+        📋 Table View
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Compact Filter Bar -->
+<div class="events-filter-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);">
+  <form method="GET" action="{{ url_for('events_list') }}" class="filter-bar" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 0;">
+    <input type="hidden" name="view" value="{{ view_mode }}">
+    
+    <div style="flex: 1; min-width: 260px; position: relative;">
+      <input type="text" name="search" class="form-control" placeholder="Search events by title, venue, or keywords..." value="{{ search }}" style="width: 100%; padding-left: 38px; border-radius: 8px; border-color: #cbd5e1;">
+      <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.9rem;">🔍</span>
+    </div>
+
+    <div style="min-width: 180px;">
+      <select name="status" class="form-select" style="width: 100%; border-radius: 8px; border-color: #cbd5e1;">
+        <option value="">All Statuses</option>
+        <option value="Upcoming" {% if status_filter == 'Upcoming' %}selected{% endif %}>Upcoming</option>
+        <option value="Ongoing" {% if status_filter == 'Ongoing' %}selected{% endif %}>Ongoing</option>
+        <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+        <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding: 8px 20px; font-weight: 700; border-radius: 8px;">Filter</button>
+    {% if search or status_filter %}
+    <a href="{{ url_for('events_list', view=view_mode) }}" class="btn btn-secondary" style="padding: 8px 16px; border-radius: 8px;">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if events %}
+  {% if view_mode == 'table' %}
+    <!-- Table View (Preserved) -->
+    <div class="card">
+      <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+          <table class="table" style="margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th>Event Title</th>
+                <th>Date & Venue</th>
+                <th>Ticket Prices</th>
+                <th>Capacity & Sold</th>
+                <th>Ticket Revenue</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in events %}
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="{{ event_poster_url(e.poster_image) }}"
+                         alt="{{ e.title }}" class="event-thumb-mini" loading="lazy"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/event-placeholder.svg') }}';">
+                    <div>
+                      <a href="{{ url_for('event_view', event_id=e.id) }}">
+                        <strong>{{ e.title }}</strong>
+                      </a>
+                      {% if e.description %}
+                      <div style="font-size: 0.775rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ e.description }}
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div>{{ e.event_date | format_date }} at {{ e.event_time }}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">📍 {{ e.venue }}</div>
+                </td>
+                <td>
+                  <div>Members: <strong style="color: var(--primary);">{{ e.member_price | currency }}</strong></div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Standard: {{ e.non_member_price | currency }}</div>
+                </td>
+                <td>
+                  <div><strong>{{ e.tickets_sold }}</strong> / {{ e.capacity }} seats</div>
+                  <div style="font-size: 0.75rem; color: {% if e.remaining_seats == 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
+                    {{ e.remaining_seats }} available
+                  </div>
+                </td>
+                <td>
+                  <strong style="color: var(--success);">{{ e.total_revenue | currency }}</strong>
+                </td>
+                <td>
+                  {% if e.status == 'Upcoming' %}
+                  <span class="badge badge-upcoming">Upcoming</span>
+                  {% elif e.status == 'Ongoing' %}
+                  <span class="badge badge-active">Ongoing</span>
+                  {% elif e.status == 'Completed' %}
+                  <span class="badge badge-confirmed">Completed</span>
+                  {% else %}
+                  <span class="badge badge-cancelled">Cancelled</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <a href="{{ url_for('event_view', event_id=e.id) }}" class="btn btn-sm btn-secondary">View Details</a>
+                    {% if e.remaining_seats > 0 and e.status != 'Cancelled' and e.status != 'Completed' %}
+                    <a href="{{ url_for('event_register', event_id=e.id) }}" class="btn btn-sm btn-primary">Register Now</a>
+                    {% if current_user.role in ['Administrator', 'Event Organizer', 'Treasurer'] %}
+                    <a href="{{ url_for('events_sell_ticket', event_id=e.id) }}" class="btn btn-sm btn-secondary" title="Direct Staff Issue">Sell</a>
+                    {% endif %}
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  {% else %}
+    <!-- Modern 3-Column Card Grid View (Reference Design) -->
+    <div class="event-cards-grid">
+      {% for e in events %}
+      <div class="event-card">
+        <!-- Event Poster with 16:9 Aspect Ratio and Graceful Fallback -->
+        <div class="event-card-poster-wrapper">
+          <img src="{{ event_poster_url(e.poster_image) }}"
+               alt="{{ e.title }}" 
+               class="event-card-poster-img" 
+               loading="lazy"
+               onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/event-placeholder.svg') }}';">
+          
+          <!-- Floating Overlay Badges -->
+          <div class="event-poster-badges">
+            {% if e.status == 'Upcoming' %}
+            <span class="badge" style="background: rgba(16, 185, 129, 0.92); color: #ffffff;">Upcoming</span>
+            {% elif e.status == 'Ongoing' %}
+            <span class="badge" style="background: rgba(59, 130, 246, 0.92); color: #ffffff;">Ongoing</span>
+            {% elif e.status == 'Completed' %}
+            <span class="badge" style="background: rgba(100, 116, 139, 0.92); color: #ffffff;">Completed</span>
+            {% else %}
+            <span class="badge" style="background: rgba(239, 68, 68, 0.92); color: #ffffff;">Cancelled</span>
+            {% endif %}
+
+            <span class="badge" style="{% if e.remaining_seats == 0 %}background: rgba(239, 68, 68, 0.92); color: #ffffff;{% else %}background: rgba(15, 23, 42, 0.85); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2);{% endif %}">
+              {% if e.remaining_seats == 0 %}Sold Out{% else %}{{ e.remaining_seats }} Seats Left{% endif %}
+            </span>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="event-card-body">
+          <div class="event-card-meta">
+            <span class="event-meta-item">
+              <span>📅</span> {{ e.event_date | format_date }} &bull; {{ e.event_time }}
+            </span>
+            <span class="event-meta-item">
+              <span>📍</span> {{ e.venue }}
+            </span>
+          </div>
+
+          <h3 class="event-card-title">
+            <a href="{{ url_for('event_view', event_id=e.id) }}">{{ e.title }}</a>
+          </h3>
+
+          <p class="event-card-desc">
+            {{ e.description or 'Join fellow members for this student organization event.' }}
+          </p>
+
+          <!-- Pricing Breakdown: Member vs Standard Price -->
+          <div class="event-card-pricing-row">
+            <div class="event-price-box">
+              <span class="price-label">Member Price</span>
+              <span class="price-val" style="color: #7c3aed;">{{ e.member_price | currency }}</span>
+            </div>
+            <div class="event-price-box">
+              <span class="price-label">Standard Price</span>
+              <span class="price-val">{{ e.non_member_price | currency }}</span>
+            </div>
+          </div>
+
+          <!-- Capacity Progress Bar -->
+          <div class="event-capacity-bar-wrapper">
+            <div class="event-capacity-bar-labels">
+              <span>Capacity Filled</span>
+              <span><strong>{{ e.tickets_sold }}</strong> / {{ e.capacity }} seats</span>
+            </div>
+            {% set fill_pct = [((e.tickets_sold / e.capacity) * 100)|round|int, 100]|min if e.capacity > 0 else 0 %}
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill {% if e.remaining_seats == 0 %}full{% endif %}" style="width: {{ fill_pct }}%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Actions Footer -->
+        <div class="event-card-footer">
+          <a href="{{ url_for('event_view', event_id=e.id) }}" class="btn btn-secondary btn-sm event-btn-details" style="flex: 1; text-align: center;">
+            View Details
+          </a>
+
+          {% if e.remaining_seats > 0 and e.status != 'Cancelled' and e.status != 'Completed' %}
+          <button type="button" 
+                  class="btn btn-primary btn-sm open-register-modal-btn event-btn-register" 
+                  style="flex: 1; text-align: center;"
+                  data-event-id="{{ e.id }}"
+                  data-event-title="{{ e.title }}"
+                  data-event-date="{{ e.event_date | format_date }} at {{ e.event_time }}"
+                  data-event-venue="{{ e.venue }}"
+                  data-member-price="{{ e.member_price }}"
+                  data-standard-price="{{ e.non_member_price }}"
+                  data-remaining="{{ e.remaining_seats }}">
+            Register Now &rarr;
+          </button>
+          {% elif e.status == 'Completed' %}
+          <button class="btn btn-sm btn-secondary" disabled style="flex: 1; opacity: 0.6; cursor: not-allowed;">Event Completed</button>
+          {% elif e.status == 'Cancelled' %}
+          <button class="btn btn-sm btn-secondary" disabled style="flex: 1; opacity: 0.6; cursor: not-allowed;">Cancelled</button>
+          {% else %}
+          <button class="btn btn-sm btn-secondary" disabled style="flex: 1; opacity: 0.6; cursor: not-allowed;">Sold Out</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">📅</div>
+    <div class="empty-state-title">No events found</div>
+    <p class="empty-state-text">No events match your current filter criteria. Check back soon or schedule a new event.</p>
+    {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+    <a href="{{ url_for('events_new') }}" class="btn btn-primary btn-sm">+ Create Event</a>
+    {% endif %}
+  </div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- FEATURE B: QUICK REGISTRATION & DEMO PAYMENT MODAL                       -->
+<!-- ========================================================================= -->
+<div id="event-register-modal" class="modal-backdrop" style="display: none;">
+  <div class="modal-box" style="max-width: 580px;">
+    <div class="modal-header">
+      <div>
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--primary); font-weight: 700; letter-spacing: 0.5px;">Event Registration</span>
+        <h3 id="modal-event-title" style="margin: 2px 0 0; font-size: 1.25rem;">Event Title</h3>
+      </div>
+      <button type="button" class="modal-close" id="close-register-modal">&times;</button>
+    </div>
+
+    <div class="modal-body" style="padding: 20px;">
+      <!-- Quick Event Info Snippet -->
+      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+        <div>
+          <div id="modal-event-date-venue" style="color: var(--text-secondary); font-weight: 500;">📅 Date &bull; 📍 Venue</div>
+        </div>
+        <div style="text-align: right;">
+          <span id="modal-remaining-seats" class="badge badge-active">Seats Available</span>
+        </div>
+      </div>
+
+      <!-- Pricing Summary Callout -->
+      <div style="background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.85rem; color: var(--primary-hover); font-weight: 600;">Standard Admission:</span>
+          <strong id="modal-standard-price-display" style="font-size: 1.1rem; color: var(--primary);">₹0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 0.8rem; color: #4338ca;">
+          <span>Active Club Members:</span>
+          <span id="modal-member-price-display" style="font-weight: 700;">₹0.00 (Discounted)</span>
+        </div>
+      </div>
+
+      <!-- Registration Form -->
+      <form id="ajax-event-register-form">
+        <input type="hidden" id="modal-event-id" name="event_id">
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="modal-attendee-name">Attendee Full Name *</label>
+          <input type="text" id="modal-attendee-name" name="attendee_name" class="form-control" 
+                 value="{{ current_user.full_name or '' }}" required placeholder="Enter attendee full name">
+        </div>
+
+        <div class="form-row" style="margin-bottom: 14px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="modal-attendee-email">Email Address *</label>
+            <input type="email" id="modal-attendee-email" name="attendee_email" class="form-control" 
+                   value="{{ current_user.email or '' }}" required placeholder="attendee@example.com">
+          </div>
+
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="modal-attendee-phone">Phone Number</label>
+            <input type="tel" id="modal-attendee-phone" name="attendee_phone" class="form-control" placeholder="+91 98765 43210">
+          </div>
+        </div>
+
+        <!-- Demo Payment Option (Strictly satisfies Rule 8 & 9) -->
+        <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: var(--radius-sm); padding: 14px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <label class="form-label" style="margin: 0; color: #6b21a8; font-weight: 700;">💳 Demo Payment Simulator</label>
+            <span class="badge badge-neutral" style="font-size: 0.7rem; background: #f3e8ff; color: #7e22ce;">Test Mode</span>
+          </div>
+
+          <select id="modal-payment-simulation" name="payment_simulation" class="form-select" style="margin-bottom: 8px;">
+            <option value="demo_success" selected>✅ Successful Demo Payment (Confirm & Issue Ticket)</option>
+            <option value="simulate_failure">❌ Simulate Payment Decline / Gateway Failure</option>
+          </select>
+
+          <div style="font-size: 0.75rem; color: #7e22ce; line-height: 1.4;">
+            ℹ️ <strong>Simulated Transaction:</strong> This demonstration simulates digital payment gateway confirmation. No real financial charge or bank debit will occur. Amount is calculated and verified server-side.
+          </div>
+        </div>
+
+        <!-- Error Feedback Area -->
+        <div id="modal-register-error" class="alert alert-danger" style="display: none; margin-bottom: 16px;"></div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" id="cancel-register-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-register-btn" style="min-width: 160px;">
+            Confirm & Pay (Demo)
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- FEATURE B: MINIMAL SUCCESS CONFIRMATION CARD                              -->
+<!-- ========================================================================= -->
+<div id="payment-success-popup" class="modal-backdrop cs-ticket-success-backdrop" style="display: none;">
+  <div class="modal-box cs-min-success-card" role="dialog" aria-modal="true" aria-labelledby="success-popup-title">
+    <!-- Close "X" Button -->
+    <button type="button" class="cs-modal-close-btn" id="close-success-popup-x" aria-label="Close dialog">&times;</button>
+
+    <!-- Header: Green Success Icon + Title + Demo Pill -->
+    <div class="cs-min-header">
+      <div class="cs-min-icon-badge" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <div class="cs-min-header-text">
+        <h2 id="success-popup-title" class="cs-min-title">Registration Successful!</h2>
+        <span class="cs-min-demo-pill">Demo Payment</span>
+      </div>
+    </div>
+
+    <!-- 2-Column Minimal Grid: Details (Left) + Gate Pass QR (Right) -->
+    <div class="cs-min-grid">
+      <!-- Left Column: Essential Info Only -->
+      <div class="cs-min-info-col">
+        <div class="cs-min-event-name" id="success-event-name">—</div>
+        <div class="cs-min-event-meta" id="success-event-date-venue">📅 —</div>
+
+        <div class="cs-min-details-strip">
+          <div class="cs-min-detail-item">
+            <span class="cs-min-label">Amount Paid</span>
+            <strong class="cs-min-val cs-amount-val" id="success-amount">₹0.00</strong>
+          </div>
+          <div class="cs-min-detail-item">
+            <span class="cs-min-label">Ticket ID</span>
+            <code class="cs-min-code" id="success-ticket-id">—</code>
+          </div>
+        </div>
+
+        <!-- Hidden hooks for script compatibility -->
+        <span id="success-attendee" style="display: none;"></span>
+        <span id="success-payment-ref" style="display: none;"></span>
+      </div>
+
+      <!-- Right Column: Scannable Gate Pass QR Code -->
+      <div class="cs-min-qr-col">
+        <div class="cs-min-qr-box">
+          <div id="success-qr-container" class="cs-min-qr-svg-wrap">
+            <!-- Dynamic SVG injected here -->
+          </div>
+          <div class="cs-min-qr-label">Gate Pass QR Code</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons: "View Ticket" and "Done" -->
+    <div class="cs-min-actions">
+      <a id="success-view-ticket-btn" href="#" class="btn btn-primary cs-min-action-btn">
+        🎟️ View Ticket
+      </a>
+      <button type="button" class="btn btn-secondary cs-min-action-btn" id="close-success-popup">
+        Done
+      </button>
+      <a id="success-download-ticket-btn" href="#" style="display: none;"></a>
+    </div>
+  </div>
+</div>
+{% endblock %}

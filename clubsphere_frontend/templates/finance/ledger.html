@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% block title %}Financial Ledger & Cash Flow — ClubSphere{% endblock %}
+{% block page_title %}Financial Ledger & Cash Flow{% endblock %}
+
+{% block top_actions %}
+<button class="btn btn-primary btn-sm" data-modal-target="record-income-modal">+ Record Direct Income</button>
+<a href="{{ url_for('expenses_list') }}" class="btn btn-secondary btn-sm">Manage Expenses</a>
+{% endblock %}
+
+{% block content %}
+<div class="finance-page-container">
+
+  <!-- Subtitle -->
+  <div class="finance-header-sub">
+    <p class="page-subtitle" style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">Cash flow tracking and financial reconciliation</p>
+  </div>
+
+  <!-- 1. Four Compact Summary Cards -->
+  <div class="finance-kpis-row">
+    <div class="finance-kpi-card">
+      <div class="kpi-card-head">
+        <span class="kpi-label">Total Recorded Income</span>
+        <span class="kpi-icon">💰</span>
+      </div>
+      <div class="kpi-value text-income">{{ total_income | currency }}</div>
+    </div>
+
+    <div class="finance-kpi-card">
+      <div class="kpi-card-head">
+        <span class="kpi-label">Total Paid Expenses</span>
+        <span class="kpi-icon">📉</span>
+      </div>
+      <div class="kpi-value text-expense">{{ total_expenses | currency }}</div>
+    </div>
+
+    <div class="finance-kpi-card">
+      <div class="kpi-card-head">
+        <span class="kpi-label">Net Cash Movement</span>
+        <span class="kpi-icon">📊</span>
+      </div>
+      <div class="kpi-value {% if net_cash >= 0 %}text-income{% else %}text-expense{% endif %}">
+        {{ net_cash | currency }}
+      </div>
+    </div>
+
+    <div class="finance-kpi-card">
+      <div class="kpi-card-head">
+        <span class="kpi-label">Outstanding Member Dues</span>
+        <span class="kpi-icon">⏳</span>
+      </div>
+      <div class="kpi-value {% if outstanding_dues > 0 %}text-warning{% else %}text-muted{% endif %}">
+        {{ outstanding_dues | currency }}
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. General Financial Ledger (Main Focus) -->
+  <div class="ledger-clean-card">
+    <!-- Compact Filter Toolbar -->
+    <form method="GET" action="{{ url_for('finance_ledger') }}" class="compact-filter-toolbar" id="ledgerFilterForm">
+      <div class="filter-search-wrap">
+        <svg class="search-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" name="q" id="ledgerSearchInput" class="form-control filter-search-input" placeholder="Search transactions..." value="{{ q or '' }}" autocomplete="off">
+        {% if q %}
+        <a href="{{ url_for('finance_ledger', type=type_filter, category=cat_filter, start_date=start_date, end_date=end_date) }}" class="search-clear-link" title="Clear search">&times;</a>
+        {% endif %}
+      </div>
+
+      <select name="type" class="form-select filter-select" aria-label="Flow Type">
+        <option value="">All Flow Types</option>
+        <option value="Income" {% if type_filter == 'Income' %}selected{% endif %}>Income</option>
+        <option value="Expense" {% if type_filter == 'Expense' %}selected{% endif %}>Expense</option>
+      </select>
+
+      <select name="category" class="form-select filter-select" aria-label="Category">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}" {% if cat_filter == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+
+      <div class="filter-dates-wrap">
+        <input type="date" name="start_date" class="form-control filter-date-input" value="{{ start_date }}" placeholder="Start" title="Start Date">
+        <span class="date-dash">&ndash;</span>
+        <input type="date" name="end_date" class="form-control filter-date-input" value="{{ end_date }}" placeholder="End" title="End Date">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm filter-submit-btn">Filter</button>
+      {% if type_filter or cat_filter or start_date or end_date or q %}
+      <a href="{{ url_for('finance_ledger') }}" class="btn btn-secondary btn-sm filter-clear-btn">Clear</a>
+      {% endif %}
+    </form>
+
+    <!-- Clean Ledger Table -->
+    {% if transactions %}
+    <div class="table-responsive">
+      <table class="table ledger-minimal-table" id="ledgerTable">
+        <thead>
+          <tr>
+            <th style="width: 110px;">Date</th>
+            <th style="width: 90px;">Type</th>
+            <th style="width: 140px;">Category</th>
+            <th>Description</th>
+            <th style="width: 120px;">Payment Mode</th>
+            <th style="width: 120px; text-align: right;">Amount</th>
+            <th style="width: 90px; text-align: center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ledgerTableBody">
+          {% for tx in transactions %}
+          <tr class="ledger-row" id="row-{{ tx.id }}" onclick="toggleRowDetails({{ tx.id }})">
+            <td class="cell-date">{{ tx.transaction_date | format_date }}</td>
+            <td>
+              {% if tx.transaction_type == 'Income' %}
+              <span class="badge-type-income">Income</span>
+              {% else %}
+              <span class="badge-type-expense">Expense</span>
+              {% endif %}
+            </td>
+            <td class="cell-category">{{ tx.category }}</td>
+            <td class="cell-description">
+              <span class="desc-preview" title="{{ tx.description }}">{{ tx.description }}</span>
+            </td>
+            <td class="cell-payment">{{ tx.payment_method }}</td>
+            <td class="cell-amount {% if tx.transaction_type == 'Income' %}text-income{% else %}text-expense{% endif %}" style="text-align: right;">
+              {% if tx.transaction_type == 'Income' %}+{% else %}&minus;{% endif %}{{ tx.amount | currency }}
+            </td>
+            <td style="text-align: center;" onclick="event.stopPropagation();">
+              <button type="button" class="btn-view-details" onclick="toggleRowDetails({{ tx.id }})" aria-expanded="false" id="btn-{{ tx.id }}">
+                Details <span class="chevron-icon" id="chevron-{{ tx.id }}">▾</span>
+              </button>
+            </td>
+          </tr>
+          <!-- Expandable Details Row -->
+          <tr class="ledger-details-panel" id="details-{{ tx.id }}" style="display: none;">
+            <td colspan="7">
+              <div class="details-expanded-box">
+                <div class="details-grid">
+                  <div class="details-item full-width">
+                    <span class="details-label">Complete Description</span>
+                    <p class="details-value-text">{{ tx.description }}</p>
+                  </div>
+                  <div class="details-item">
+                    <span class="details-label">Transaction Reference</span>
+                    <span class="details-value-mono">
+                      {% if tx.source_type %}
+                        {{ tx.source_type | replace('_', ' ') | title }} {% if tx.source_id %}#{{ tx.source_id }}{% endif %}
+                      {% else %}
+                        TX-{{ tx.id }}
+                      {% endif %}
+                    </span>
+                  </div>
+                  <div class="details-item">
+                    <span class="details-label">Logged By</span>
+                    <span class="details-value">{{ tx.recorder_name or 'System' }}</span>
+                  </div>
+                  <div class="details-item">
+                    <span class="details-label">Payment Mode</span>
+                    <span class="details-value">{{ tx.payment_method }}</span>
+                  </div>
+                  <div class="details-item">
+                    <span class="details-label">Transaction Date</span>
+                    <span class="details-value">{{ tx.transaction_date }}</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="ledger-pagination-bar">
+      <div class="pagination-info">
+        Showing <strong>{{ start_index }}&ndash;{{ end_index }}</strong> of <strong>{{ total_matching }}</strong> records
+        {% if total_pages > 1 %}&bull; Page <strong>{{ page }}</strong> of <strong>{{ total_pages }}</strong>{% endif %}
+      </div>
+
+      {% if total_pages > 1 %}
+      <div class="pagination-controls">
+        {% if page > 1 %}
+        <a href="{{ url_for('finance_ledger', page=page-1, q=q, type=type_filter, category=cat_filter, start_date=start_date, end_date=end_date) }}" class="btn btn-secondary btn-sm pagination-btn">
+          &larr; Previous
+        </a>
+        {% else %}
+        <span class="btn btn-secondary btn-sm pagination-btn disabled">&larr; Previous</span>
+        {% endif %}
+
+        <div class="pagination-page-pills">
+          {% for p in range(1, total_pages + 1) %}
+          <a href="{{ url_for('finance_ledger', page=p, q=q, type=type_filter, category=cat_filter, start_date=start_date, end_date=end_date) }}" class="page-pill {% if p == page %}active{% endif %}">
+            {{ p }}
+          </a>
+          {% endfor %}
+        </div>
+
+        {% if page < total_pages %}
+        <a href="{{ url_for('finance_ledger', page=page+1, q=q, type=type_filter, category=cat_filter, start_date=start_date, end_date=end_date) }}" class="btn btn-secondary btn-sm pagination-btn">
+          Next &rarr;
+        </a>
+        {% else %}
+        <span class="btn btn-secondary btn-sm pagination-btn disabled">Next &rarr;</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% else %}
+    <div style="padding: 36px 16px; text-align: center;">
+      <div style="font-size: 2rem; margin-bottom: 8px;">💰</div>
+      <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">No transactions found</div>
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;">No financial records match the selected filters.</p>
+      <a href="{{ url_for('finance_ledger') }}" class="btn btn-secondary btn-sm">Reset Filters</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 3. Event Financial Overview (Collapsed by default below ledger) -->
+  {% set ns = namespace(total_tix=0, total_rev=0.0, total_exp=0.0) %}
+  {% for ev in events_breakdown %}
+    {% set ns.total_tix = ns.total_tix + ev.tickets_sold %}
+    {% set ns.total_rev = ns.total_rev + ev.ticket_revenue %}
+    {% set ns.total_exp = ns.total_exp + ev.paid_expenses %}
+  {% endfor %}
+  {% set total_event_margin = ns.total_rev - ns.total_exp %}
+
+  <details class="event-financial-accordion" id="eventFinancialOverview">
+    <summary class="event-accordion-summary">
+      <div class="event-accordion-left">
+        <div class="event-accordion-title-wrap">
+          <span style="font-size: 1rem;">🎪</span>
+          <strong style="font-size: 0.9rem; color: #1e293b;">Event Financial Overview</strong>
+          <span class="badge badge-neutral" style="font-size: 0.72rem;">{{ events_breakdown | length }} Events</span>
+        </div>
+        <div class="event-accordion-metrics">
+          <span>Revenue: <strong class="text-income">{{ ns.total_rev | currency }}</strong></span>
+          <span class="metric-dot">&bull;</span>
+          <span>Expenses: <strong class="text-expense">{{ ns.total_exp | currency }}</strong></span>
+          <span class="metric-dot">&bull;</span>
+          <span>Margin: <strong class="{% if total_event_margin >= 0 %}text-income{% else %}text-expense{% endif %}">{{ total_event_margin | currency }}</strong></span>
+        </div>
+      </div>
+      <div class="event-accordion-right">
+        <span class="event-accordion-toggle-btn">
+          <span class="toggle-text">View Breakdown</span>
+          <svg class="accordion-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </span>
+      </div>
+    </summary>
+    <div>
+      {% if events_breakdown %}
+      <div class="table-responsive">
+        <table class="table event-breakdown-table" style="margin-bottom: 0;">
+          <thead>
+            <tr>
+              <th>Event Title</th>
+              <th>Date</th>
+              <th style="text-align: center;">Tickets Sold</th>
+              <th style="text-align: right;">Ticket Revenue</th>
+              <th style="text-align: right;">Allocated Expenses</th>
+              <th style="text-align: right;">Net Profit / Loss</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ev in events_breakdown %}
+            {% set net_margin = ev.ticket_revenue - ev.paid_expenses %}
+            <tr>
+              <td>
+                <a href="{{ url_for('event_view', event_id=ev.id) }}" style="font-weight: 500; color: var(--primary);">
+                  {{ ev.title }}
+                </a>
+              </td>
+              <td style="color: #64748b; white-space: nowrap;">{{ ev.event_date | format_date }}</td>
+              <td style="text-align: center; font-weight: 500;">{{ ev.tickets_sold }}</td>
+              <td style="text-align: right; font-weight: 600;" class="text-income">{{ ev.ticket_revenue | currency }}</td>
+              <td style="text-align: right;" class="text-expense">{{ ev.paid_expenses | currency }}</td>
+              <td style="text-align: right; font-weight: 600;" class="{% if net_margin >= 0 %}text-income{% else %}text-expense{% endif %}">
+                {{ net_margin | currency }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding: 16px; text-align: center; color: #64748b; font-size: 0.85rem;">
+        No events created to calculate event-specific balances.
+      </div>
+      {% endif %}
+    </div>
+  </details>
+
+</div>
+
+<!-- Modal: Record Direct Income (Fundraising, Sponsorship, Donation) -->
+<div id="record-income-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: white; border-radius: var(--radius-md); max-width: 520px; width: 100%; padding: 24px; box-shadow: var(--shadow-lg);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>💰</span> Record Direct Club Income
+      </h3>
+      <button type="button" class="modal-close" style="background:none; border:none; font-size: 1.5rem; line-height: 1; cursor:pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <form action="{{ url_for('finance_record_income') }}" method="POST">
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label" for="category" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Income Category *</label>
+        <select id="category" name="category" class="form-select" required style="width: 100%;">
+          <option value="Fundraising Income">Fundraising Campaign</option>
+          <option value="Sponsorship">Corporate / College Sponsorship</option>
+          <option value="Donation">Alumni / Patron Donation</option>
+          <option value="Other">Other Revenue</option>
+        </select>
+      </div>
+
+      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 16px;">
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label" for="amount" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Amount (₹) *</label>
+          <input type="number" step="0.01" min="0.01" id="amount" name="amount" class="form-control" placeholder="5000.00" required style="width: 100%;">
+        </div>
+
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label" for="transaction_date" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Date Received *</label>
+          <input type="date" id="transaction_date" name="transaction_date" class="form-control" value="{{ today_str }}" required style="width: 100%;">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label" for="payment_method" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Payment Mode</label>
+        <select id="payment_method" name="payment_method" class="form-select" style="width: 100%;">
+          <option value="Bank Transfer">Bank Transfer / NEFT</option>
+          <option value="UPI">UPI / QR Code</option>
+          <option value="Cash">Cash</option>
+          <option value="Cheque">Cheque</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label class="form-label" for="description" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Source / Description *</label>
+        <textarea id="description" name="description" class="form-control" rows="2" placeholder="e.g. Annual TechFest sponsorship from Tech Corp" required style="width: 100%; resize: vertical;"></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button type="submit" class="btn btn-primary" style="flex: 1;">Post to Ledger</button>
+        <button type="button" data-modal-close class="btn btn-secondary">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Toggle row details expansion
+function toggleRowDetails(txId) {
+  var detailsRow = document.getElementById('details-' + txId);
+  var mainRow = document.getElementById('row-' + txId);
+  var btn = document.getElementById('btn-' + txId);
+  var chevron = document.getElementById('chevron-' + txId);
+
+  if (!detailsRow) return;
+
+  var isHidden = (detailsRow.style.display === 'none' || !detailsRow.style.display);
+  if (isHidden) {
+    detailsRow.style.display = 'table-row';
+    if (mainRow) mainRow.classList.add('is-expanded');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    if (chevron) chevron.textContent = '▴';
+  } else {
+    detailsRow.style.display = 'none';
+    if (mainRow) mainRow.classList.remove('is-expanded');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (chevron) chevron.textContent = '▾';
+  }
+}
+
+// Collapsible Event Financial Overview toggle text sync
+document.addEventListener('DOMContentLoaded', function() {
+  var detailsEl = document.getElementById('eventFinancialOverview');
+  if (detailsEl) {
+    var toggleText = detailsEl.querySelector('.toggle-text');
+    detailsEl.addEventListener('toggle', function() {
+      if (toggleText) {
+        toggleText.textContent = detailsEl.open ? 'Hide Breakdown' : 'View Breakdown';
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

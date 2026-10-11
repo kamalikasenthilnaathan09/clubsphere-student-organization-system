@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}Ticket Pass — {{ ticket.ticket_ref }}{% endblock %}
+{% block page_title %}Ticket Pass: {{ ticket.ticket_ref }}{% endblock %}
+
+{% block top_actions %}
+<div style="display: flex; gap: 8px;">
+  <a href="{{ url_for('event_view', event_id=ticket.event_id) }}" class="btn btn-secondary btn-sm">&larr; Back to Event</a>
+  <a href="{{ url_for('ticket_download', ticket_ref=ticket.ticket_ref) }}" class="btn btn-secondary btn-sm">⬇️ Download Ticket</a>
+  <button onclick="window.print()" class="btn btn-primary btn-sm">🖨️ Print Pass</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="ticket-badge-card" style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: var(--radius); border: 1px solid var(--border-color); box-shadow: var(--shadow); padding: 28px;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <img src="{{ url_for('static', filename='images/odoo logo.jpg') }}" alt="ClubSphere Logo" class="ticket-pass-logo">
+      <div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); font-weight: 800;">
+          ClubSphere Official Event Pass
+        </div>
+        <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-top: 2px; margin-bottom: 0;">
+          {{ ticket.event_title }}
+        </h2>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <span class="badge {% if ticket.checked_in %}badge-confirmed{% else %}badge-active{% endif %}" style="font-size: 0.8rem; padding: 6px 12px;">
+        {% if ticket.checked_in %}ATTENDED{% else %}CONFIRMED{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 24px; align-items: center;">
+    <div>
+      <div style="margin-bottom: 14px;">
+        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Attendee Name</span>
+        <strong style="font-size: 1.15rem; color: var(--text-primary);">{{ ticket.purchaser_name }}</strong>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;">{{ ticket.purchaser_email }}</div>
+        {% if ticket.purchaser_phone %}
+        <div style="font-size: 0.8rem; color: var(--text-muted);">📞 {{ ticket.purchaser_phone }}</div>
+        {% endif %}
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Date &amp; Venue</span>
+        <div style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">
+          {{ ticket.event_date | format_date }} at {{ ticket.event_time }}
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">📍 {{ ticket.venue }}</div>
+      </div>
+
+      <div>
+        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Payment Reference</span>
+        <code style="font-size: 0.82rem; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">
+          {{ ticket.payment_ref or 'DEMO-TXN-VERIFIED' }}
+        </code>
+      </div>
+    </div>
+
+    <!-- Scannable Dynamic SVG QR Code Box (Feature B) -->
+    <div style="border: 2px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; text-align: center; background-color: #fafbfc; box-shadow: var(--shadow-sm);">
+      <div style="margin: 0 auto 8px; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; background: #ffffff; padding: 6px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        {% if qr_svg %}
+          {{ qr_svg | safe }}
+        {% else %}
+          <div style="font-size: 3rem;">🎟️</div>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Ticket Code</div>
+      <code style="font-size: 0.88rem; font-weight: 800; word-break: break-all; color: var(--primary);">
+        {{ ticket.ticket_ref }}
+      </code>
+    </div>
+  </div>
+
+  <div style="border-top: 1px dashed var(--border-color); padding-top: 14px; display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-muted);">
+    <div>Amount Paid: <strong style="color: var(--success);">{{ ticket.price_paid | currency }}</strong> ({% if ticket.is_member_rate %}Member Rate{% else %}General{% endif %})</div>
+    <div>Issued: {{ ticket.created_at | format_date }}</div>
+  </div>
+
+  <div style="margin-top: 14px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; font-size: 0.72rem; color: var(--text-muted); text-align: center;">
+    🛡️ Present this QR code or Ticket Reference at the door for verification at the ClubSphere Event Gate.
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- FEATURE B: POLISHED POST-PAYMENT SUCCESS POPUP ON BADGE PAGE              -->
+<!-- ========================================================================= -->
+{% if show_success_modal %}
+<div id="page-success-popup" class="modal-backdrop cs-ticket-success-backdrop" style="display: flex;">
+  <div class="modal-box cs-min-success-card" role="dialog" aria-modal="true" aria-labelledby="badge-success-title">
+    <!-- Close "X" Button -->
+    <button type="button" class="cs-modal-close-btn" onclick="document.getElementById('page-success-popup').style.display='none';" aria-label="Close dialog">&times;</button>
+
+    <!-- Header: Green Success Icon + Title + Demo Pill -->
+    <div class="cs-min-header">
+      <div class="cs-min-icon-badge" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <div class="cs-min-header-text">
+        <h2 id="badge-success-title" class="cs-min-title">Registration Successful!</h2>
+        <span class="cs-min-demo-pill">Demo Payment</span>
+      </div>
+    </div>
+
+    <!-- 2-Column Minimal Grid: Details (Left) + Gate Pass QR (Right) -->
+    <div class="cs-min-grid">
+      <!-- Left Column: Essential Info Only -->
+      <div class="cs-min-info-col">
+        <div class="cs-min-event-name">{{ ticket.event_title }}</div>
+        <div class="cs-min-event-meta">📅 {{ ticket.event_date | format_date }} at {{ ticket.event_time }} • 📍 {{ ticket.venue }}</div>
+
+        <div class="cs-min-details-strip">
+          <div class="cs-min-detail-item">
+            <span class="cs-min-label">Amount Paid</span>
+            <strong class="cs-min-val cs-amount-val">{{ ticket.price_paid | currency }}</strong>
+          </div>
+          <div class="cs-min-detail-item">
+            <span class="cs-min-label">Ticket ID</span>
+            <code class="cs-min-code">{{ ticket.ticket_ref }}</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Scannable Gate Pass QR Code -->
+      <div class="cs-min-qr-col">
+        <div class="cs-min-qr-box">
+          <div class="cs-min-qr-svg-wrap">
+            {{ qr_svg | safe }}
+          </div>
+          <div class="cs-min-qr-label">Gate Pass QR Code</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="cs-min-actions">
+      <button type="button" class="btn btn-primary cs-min-action-btn" onclick="document.getElementById('page-success-popup').style.display='none';">
+        🎟️ View Ticket Pass
+      </button>
+      <button type="button" class="btn btn-secondary cs-min-action-btn" onclick="document.getElementById('page-success-popup').style.display='none';">
+        Done
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

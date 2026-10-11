@@ -1,0 +1,1000 @@
+{% extends "base.html" %}
+
+{% block title %}Business Analytics — ClubSphere{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 20px;">
+  <div>
+    <h1 class="page-title">Business Analytics &amp; Performance</h1>
+    <p class="page-subtitle">Unified financial reconciliation, event turnout, merchandise volume, and membership health.</p>
+  </div>
+</div>
+
+<!-- Date Range Filter & Quick Presets -->
+<div class="analytics-filter-bar">
+  <form method="GET" action="{{ url_for('analytics_dashboard') }}" class="date-filter-form">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Date Filter:</span>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="width: auto; padding: 6px 12px; font-size: 0.85rem;" title="Start Date">
+      <span style="color: var(--text-muted); font-size: 0.85rem;">to</span>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="width: auto; padding: 6px 12px; font-size: 0.85rem;" title="End Date">
+      <button type="submit" class="btn btn-sm btn-primary">Apply Filter</button>
+      {% if is_date_filtered %}
+      <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline" title="Clear Date Filter">Clear</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="quick-filter-pills">
+    <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: 4px; align-self: center;">Quick:</span>
+    <a href="{{ url_for('analytics_dashboard') }}" class="quick-pill {% if not is_date_filtered %}active{% endif %}">All Time</a>
+    <a href="{{ url_for('analytics_dashboard', start_date=today_minus_30, end_date=today) }}" class="quick-pill">Last 30 Days</a>
+    <a href="{{ url_for('analytics_dashboard', start_date=start_of_month, end_date=today) }}" class="quick-pill">This Month</a>
+    <a href="{{ url_for('analytics_dashboard', start_date=start_of_year, end_date=today) }}" class="quick-pill">Year to Date</a>
+  </div>
+</div>
+
+{% if is_date_filtered %}
+<div class="alert alert-info" style="margin-bottom: 24px; padding: 10px 16px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+  <span>
+    <strong>Filtered Period Active:</strong> Showing records from <strong>{{ start_date or 'Beginning of Records' }}</strong> to <strong>{{ end_date or 'Present' }}</strong>.
+  </span>
+  <a href="{{ url_for('analytics_dashboard') }}" style="color: var(--info); font-weight: 600; text-decoration: underline;">Reset to All Time</a>
+</div>
+{% endif %}
+
+<!-- B. Compact Primary KPI Row (4 Key Metrics) -->
+<div class="primary-kpis-grid">
+  <!-- Total Income -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Recorded Income</span>
+      <div class="stat-icon icon-green">₹</div>
+    </div>
+    <div class="stat-value" style="color: var(--success);">{{ total_income | currency }}</div>
+    <div class="stat-subtitle">Single-entry cash receipts</div>
+  </div>
+
+  <!-- Paid Expenses -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Paid Expenses</span>
+      <div class="stat-icon icon-red">💸</div>
+    </div>
+    <div class="stat-value" style="color: var(--danger);">{{ paid_expenses | currency }}</div>
+    <div class="stat-subtitle">Approved &amp; reimbursed costs</div>
+  </div>
+
+  <!-- Net Cash -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Net Cash Flow</span>
+      <div class="stat-icon {% if net_cash >= 0 %}icon-blue{% else %}icon-red{% endif %}">⚖️</div>
+    </div>
+    <div class="stat-value" style="color: {% if net_cash >= 0 %}var(--primary){% else %}var(--danger){% endif %};">
+      {{ net_cash | currency }}
+    </div>
+    <div class="stat-subtitle">Income minus paid expenses</div>
+  </div>
+
+  <!-- Active Members -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Active Members</span>
+      <div class="stat-icon icon-blue">👤</div>
+    </div>
+    <div class="stat-value">{{ active_members_count }}</div>
+    <div class="stat-subtitle">of {{ total_members_count }} total registered</div>
+  </div>
+</div>
+
+<!-- C. Prominent Responsive Chart Grid -->
+<div class="analytics-charts-grid">
+  <!-- GRAPH 1: Monthly Financial Performance -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div>
+        <div class="card-title">💵 Monthly Financial Performance</div>
+        <div class="chart-card-subtitle">Monthly income, paid expenses, and net cash reconciliation</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge badge-neutral">{{ analytics_charts.financial.labels | length }} Month(s)</span>
+        <button type="button" class="btn-chart-detail" onclick="focusDetailsTab('tab-cashflow')" title="View detailed cash flow">View Details &rarr;</button>
+      </div>
+    </div>
+    <div class="chart-card-body">
+      {% if analytics_charts.financial.labels %}
+      <div class="chart-canvas-container">
+        <canvas id="chartFinancialPerformance"></canvas>
+      </div>
+      {% else %}
+      <div class="chart-empty-state">
+        <div class="chart-empty-icon">📊</div>
+        <div class="chart-empty-title">No Financial Ledger Data</div>
+        <div class="chart-empty-desc">No income or expense transactions were recorded for the selected date window.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- GRAPH 2: Event Attendance & Turnout -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div>
+        <div class="card-title">🎟️ Event Attendance &amp; Turnout</div>
+        <div class="chart-card-subtitle">Confirmed registrations vs verified attendees with turnout percentage</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge badge-primary">{{ analytics_charts.events.labels | length }} Event(s)</span>
+        <button type="button" class="btn-chart-detail" onclick="focusDetailsTab('tab-events')" title="View event table">View Table &rarr;</button>
+      </div>
+    </div>
+    <div class="chart-card-body">
+      {% if analytics_charts.events.labels %}
+      <div class="chart-canvas-container">
+        <canvas id="chartEventAttendance"></canvas>
+      </div>
+      {% else %}
+      <div class="chart-empty-state">
+        <div class="chart-empty-icon">📅</div>
+        <div class="chart-empty-title">No Event Attendance Records</div>
+        <div class="chart-empty-desc">No scheduled or completed events match the active date range.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- GRAPH 3: Membership Status Health -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div>
+        <div class="card-title">👥 Membership Status Health</div>
+        <div class="chart-card-subtitle">Distribution across active, pending, and expired members</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge badge-success">{{ total_members_count }} Member(s)</span>
+        <button type="button" class="btn-chart-detail" onclick="focusDetailsTab('tab-membership')" title="View membership breakdown">View Details &rarr;</button>
+      </div>
+    </div>
+    <div class="chart-card-body">
+      {% if analytics_charts.membership.labels and analytics_charts.membership.counts %}
+      <div class="chart-canvas-container doughnut-container">
+        <canvas id="chartMembershipHealth"></canvas>
+      </div>
+      {% else %}
+      <div class="chart-empty-state">
+        <div class="chart-empty-icon">👥</div>
+        <div class="chart-empty-title">No Member Status Data</div>
+        <div class="chart-empty-desc">No member registration data matches the selected timeframe.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- GRAPH 4: Merchandise Performance -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div>
+        <div class="card-title">🛍️ Merchandise Performance</div>
+        <div class="chart-card-subtitle">Sales volume and revenue for paid merchandise orders</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        {% if analytics_charts.merchandise.labels or analytics_charts.merch_trend.labels %}
+        <div class="chart-toggle-btn-group">
+          <button type="button" class="chart-toggle-btn active" id="btnMerchProduct" onclick="toggleMerchChart('product')">By Product</button>
+          <button type="button" class="chart-toggle-btn" id="btnMerchTrend" onclick="toggleMerchChart('trend')">Monthly Trend</button>
+        </div>
+        {% endif %}
+        <button type="button" class="btn-chart-detail" onclick="focusDetailsTab('tab-merchandise')" title="View product list">View Items &rarr;</button>
+      </div>
+    </div>
+    <div class="chart-card-body">
+      {% if analytics_charts.merchandise.labels or analytics_charts.merch_trend.labels %}
+      <div class="chart-canvas-container">
+        <canvas id="chartMerchandisePerformance"></canvas>
+      </div>
+      {% else %}
+      <div class="chart-empty-state">
+        <div class="chart-empty-icon">👕</div>
+        <div class="chart-empty-title">No Paid Merchandise Orders</div>
+        <div class="chart-empty-desc">No completed merchandise purchases match the active date range.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- D. Secondary Details Area with Compact Metric Strip & Tabbed Panels -->
+<div class="details-section-card" id="detailsSectionContainer">
+  <div class="details-section-header">
+    <div>
+      <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+        <span>📊 Detailed Reports &amp; Audit Logs</span>
+        <span class="badge badge-neutral">Secondary Analysis</span>
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+        In-depth transaction splits, event conversions, merchandise sales, and inventory watchlist.
+      </div>
+    </div>
+    <div class="tab-view-controls">
+      <button type="button" class="btn btn-sm btn-outline" id="btnToggleAllDetails" onclick="toggleAllDetailsSections()">
+        Expand All Sections
+      </button>
+    </div>
+  </div>
+
+  <!-- Secondary Metrics Row -->
+  <div class="secondary-kpis-strip">
+    <div class="sec-kpi-item" onclick="focusDetailsTab('tab-events')" style="cursor: pointer;" title="View Event Performance">
+      <div class="sec-kpi-icon icon-sky">🎟️</div>
+      <div class="sec-kpi-content">
+        <div class="sec-kpi-label">Ticket Sales</div>
+        <div class="sec-kpi-val">{{ total_event_revenue | currency }}</div>
+        <div class="sec-kpi-sub">{{ total_tickets_sold }} confirmed ticket(s)</div>
+      </div>
+    </div>
+
+    <div class="sec-kpi-item" onclick="focusDetailsTab('tab-events')" style="cursor: pointer;" title="View Turnout Rate">
+      <div class="sec-kpi-icon" style="background-color: #f3e8ff; color: #7c3aed;">👥</div>
+      <div class="sec-kpi-content">
+        <div class="sec-kpi-label">Turnout Rate</div>
+        <div class="sec-kpi-val" style="color: #7c3aed;">{{ overall_attendance_rate }}%</div>
+        <div class="sec-kpi-sub">{{ total_attendees }} of {{ total_tickets_sold }} checked in</div>
+      </div>
+    </div>
+
+    <div class="sec-kpi-item" onclick="focusDetailsTab('tab-merchandise')" style="cursor: pointer;" title="View Merchandise Sales">
+      <div class="sec-kpi-icon icon-amber">👕</div>
+      <div class="sec-kpi-content">
+        <div class="sec-kpi-label">Merch Volume</div>
+        <div class="sec-kpi-val">{{ total_merch_revenue | currency }}</div>
+        <div class="sec-kpi-sub">{{ total_units_sold }} unit(s) · {{ total_merch_orders }} order(s)</div>
+      </div>
+    </div>
+
+    <div class="sec-kpi-item" onclick="focusDetailsTab('tab-membership')" style="cursor: pointer;" title="View Pending Dues">
+      <div class="sec-kpi-icon icon-amber">⏳</div>
+      <div class="sec-kpi-content">
+        <div class="sec-kpi-label">Pending Dues</div>
+        <div class="sec-kpi-val" style="color: {% if outstanding_dues > 0 %}var(--warning){% else %}var(--success){% endif %};">
+          {{ outstanding_dues | currency }}
+        </div>
+        <div class="sec-kpi-sub">{{ dues_collected | currency }} collected in window</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="details-tabs-nav">
+    <button type="button" class="details-tab-btn active" data-tab="tab-cashflow" onclick="switchDetailsTab('tab-cashflow')">
+      💵 Cash Flow &amp; Split
+    </button>
+    <button type="button" class="details-tab-btn" data-tab="tab-incomestreams" onclick="switchDetailsTab('tab-incomestreams')">
+      📈 Income Streams
+    </button>
+    <button type="button" class="details-tab-btn" data-tab="tab-events" onclick="switchDetailsTab('tab-events')">
+      🎟️ Event Performance
+      <span class="badge badge-neutral" style="font-size: 0.7rem; padding: 1px 6px;">{{ events_analytics | length }}</span>
+    </button>
+    <button type="button" class="details-tab-btn" data-tab="tab-merchandise" onclick="switchDetailsTab('tab-merchandise')">
+      🛍️ Product Sales
+      <span class="badge badge-neutral" style="font-size: 0.7rem; padding: 1px 6px;">{{ merch_items_sales | length }}</span>
+    </button>
+    <button type="button" class="details-tab-btn" data-tab="tab-inventory" onclick="switchDetailsTab('tab-inventory')">
+      ⚠️ Inventory Watchlist
+      {% if low_stock_items %}
+      <span class="badge badge-cancelled" style="font-size: 0.7rem; padding: 1px 6px;">{{ low_stock_items | length }} Alert(s)</span>
+      {% else %}
+      <span class="badge badge-confirmed" style="font-size: 0.7rem; padding: 1px 6px;">Optimal Stock</span>
+      {% endif %}
+    </button>
+    <button type="button" class="details-tab-btn" data-tab="tab-membership" onclick="switchDetailsTab('tab-membership')">
+      👥 Membership Retention
+    </button>
+  </div>
+
+  <!-- TAB PANES -->
+
+  <!-- Pane 1: Cash Flow & Financial Split -->
+  <div class="details-tab-pane active" id="tab-cashflow">
+    <div class="details-pane-title">
+      <span>💵 Cash Flow &amp; Financial Split</span>
+      <span class="badge badge-neutral">Ledger Truth</span>
+    </div>
+    {% set total_turnover = total_income + paid_expenses %}
+    {% if total_turnover > 0 %}
+      {% set income_pct = (total_income / total_turnover * 100) | round(1) %}
+      {% set expense_pct = (paid_expenses / total_turnover * 100) | round(1) %}
+      
+      <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">
+        <span style="color: var(--success);">Income: {{ total_income | currency }} ({{ income_pct }}%)</span>
+        <span style="color: var(--danger);">Expenses: {{ paid_expenses | currency }} ({{ expense_pct }}%)</span>
+      </div>
+
+      <div class="cashflow-split">
+        <div class="cashflow-split-item" style="width: {{ income_pct }}%; background-color: var(--success);" title="Income {{ income_pct }}%"></div>
+        <div class="cashflow-split-item" style="width: {{ expense_pct }}%; background-color: var(--danger);" title="Expenses {{ expense_pct }}%"></div>
+      </div>
+
+      <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.95rem; font-weight: 600;">Net Balance:</span>
+        <span style="font-size: 1.25rem; font-weight: 700; color: {% if net_cash >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+          {{ net_cash | currency }}
+        </span>
+      </div>
+
+      <div style="margin-top: 14px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+        🛡️ <em>Audit Guarantee:</em> Figures reconcile with <code>financial_transactions</code>. Income from tickets, merchandise, and membership dues hit the cash ledger exactly once upon payment confirmation.
+      </div>
+    {% else %}
+      <div class="empty-state-card">
+        <div class="empty-icon">📊</div>
+        <h4>No Ledger Transactions</h4>
+        <p>No income or paid expenses have been recorded for the selected date window.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pane 2: Income Streams Breakdown -->
+  <div class="details-tab-pane" id="tab-incomestreams">
+    <div class="details-pane-title">
+      <span>📈 Income Streams Breakdown</span>
+      <span class="badge badge-success">{{ income_categories | length }} Stream(s)</span>
+    </div>
+    {% if income_categories %}
+      {% for cat in income_categories %}
+        {% set cat_pct = (cat.total / total_income * 100) | round(1) if total_income > 0 else 0 %}
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+            <span style="font-weight: 600; color: var(--text-primary);">{{ cat.category }}</span>
+            <span><strong>{{ cat.total | currency }}</strong> <span style="color: var(--text-muted); font-size: 0.78rem;">({{ cat_pct }}%)</span></span>
+          </div>
+          <div class="chart-bar-container">
+            <div class="chart-bar-fill fill-success" style="width: {{ cat_pct }}%;"></div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state-card">
+        <div class="empty-icon">💳</div>
+        <h4>No Income Recorded</h4>
+        <p>No income streams found for the selected date filter.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pane 3: Event-Wise Performance -->
+  <div class="details-tab-pane" id="tab-events">
+    <div class="details-pane-title">
+      <span>🎟️ Event-Wise Performance &amp; Turnout</span>
+      <span class="badge badge-primary">{{ events_analytics | length }} Event(s)</span>
+    </div>
+    {% if events_analytics %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Date</th>
+            <th>Capacity</th>
+            <th>Tickets Sold</th>
+            <th>Ticket Revenue</th>
+            <th>Verified Turnout</th>
+            <th style="min-width: 140px;">Attendance Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in events_analytics %}
+          <tr>
+            <td>
+              <a href="{{ url_for('event_view', event_id=ev.id) }}" style="font-weight: 600;">
+                {{ ev.title }}
+              </a>
+            </td>
+            <td>{{ ev.event_date | format_date }}</td>
+            <td>{{ ev.capacity }} seats</td>
+            <td>
+              <strong>{{ ev.tickets_sold }}</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">
+                ({{ ((ev.tickets_sold / ev.capacity * 100) | round(1)) if ev.capacity > 0 else 0 }}% cap)
+              </span>
+            </td>
+            <td style="font-weight: 600; color: var(--success);">{{ ev.revenue | currency }}</td>
+            <td>
+              <span class="badge badge-confirmed">{{ ev.attendees }} attendee(s)</span>
+            </td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="chart-bar-container" style="flex: 1; margin-top: 0;">
+                  <div class="chart-bar-fill fill-purple" style="width: {{ ev.attendance_rate }}%;"></div>
+                </div>
+                <span style="font-size: 0.8rem; font-weight: 600; min-width: 38px;">{{ ev.attendance_rate }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+      <div class="empty-icon">📅</div>
+      <h4>No Events Found in Selected Period</h4>
+      <p>No scheduled or completed events match the active date range.</p>
+      {% if is_date_filtered %}
+      <div style="margin-top: 12px;">
+        <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline">Clear Date Filter</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pane 4: Product Sales Breakdown -->
+  <div class="details-tab-pane" id="tab-merchandise">
+    <div class="details-pane-title">
+      <span>🛍️ Product Sales Breakdown</span>
+      <span class="badge badge-neutral">{{ total_units_sold }} units total</span>
+    </div>
+    {% if merch_items_sales %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th>Units Sold</th>
+            <th>Total Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in merch_items_sales %}
+          <tr>
+            <td style="font-weight: 600;">{{ item.item_name }}</td>
+            <td><span class="badge badge-neutral">{{ item.category }}</span></td>
+            <td><strong>{{ item.units_sold }}</strong></td>
+            <td style="font-weight: 600; color: var(--success);">{{ item.item_revenue | currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+      <div class="empty-icon">👕</div>
+      <h4>No Merchandise Sales Recorded</h4>
+      <p>No paid merchandise orders match the current filtering parameters.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pane 5: Inventory Stock Watchlist -->
+  <div class="details-tab-pane" id="tab-inventory">
+    <div class="details-pane-title">
+      <span>⚠️ Inventory Stock Watchlist</span>
+      {% if low_stock_items %}
+      <span class="badge badge-cancelled">{{ low_stock_items | length }} Alert(s)</span>
+      {% else %}
+      <span class="badge badge-confirmed">Optimal Stock</span>
+      {% endif %}
+    </div>
+    {% if low_stock_items %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product &amp; Size</th>
+            <th>SKU</th>
+            <th>Current Stock</th>
+            <th>Threshold</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for var in low_stock_items %}
+          <tr>
+            <td style="font-weight: 600;">{{ var.item_name }} ({{ var.size }})</td>
+            <td><code>{{ var.sku }}</code></td>
+            <td>
+              <strong style="color: {% if var.stock_quantity == 0 %}var(--danger){% else %}var(--warning){% endif %};">
+                {{ var.stock_quantity }}
+              </strong>
+            </td>
+            <td>{{ var.low_stock_threshold }}</td>
+            <td>
+              {% if var.stock_quantity == 0 %}
+              <span class="badge badge-cancelled">Out of Stock</span>
+              {% else %}
+              <span class="badge badge-pending">Low Stock</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+      <div class="empty-icon">✅</div>
+      <h4>All Inventory Levels Healthy</h4>
+      <p>All active merchandise variants are currently above their low-stock replenishment thresholds.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pane 6: Membership Health & Retention -->
+  <div class="details-tab-pane" id="tab-membership">
+    <div class="details-pane-title">
+      <span>👥 Membership Health &amp; Retention</span>
+      <span class="badge badge-neutral">{{ total_members_count }} Total Members</span>
+    </div>
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 0;">
+      <div style="background: var(--bg-main); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">New Registrations</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--primary); margin-top: 4px;">{{ new_members_count }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Enrolled in selected window</div>
+      </div>
+
+      <div style="background: var(--bg-main); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Active Members</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--success); margin-top: 4px;">{{ active_members_count }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Unexpired with active status</div>
+      </div>
+
+      <div style="background: var(--bg-main); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Dues Collected</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--success); margin-top: 4px;">{{ dues_collected | currency }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Membership payments in period</div>
+      </div>
+
+      <div style="background: var(--bg-main); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Renewals Processed</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--info); margin-top: 4px;">{{ renewals_count }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Membership extensions recorded</div>
+      </div>
+
+      <div style="background: var(--bg-main); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Outstanding Dues</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: {% if outstanding_dues > 0 %}var(--warning){% else %}var(--success){% endif %}; margin-top: 4px;">
+          {{ outstanding_dues | currency }}
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Unsettled balance across club</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script id="analytics-chart-payload" type="application/json">
+  {{ analytics_charts | tojson | safe }}
+</script>
+<script>
+(function() {
+  const chartPayloadEl = document.getElementById('analytics-chart-payload');
+  if (!chartPayloadEl) return;
+
+  let chartData;
+  try {
+    chartData = JSON.parse(chartPayloadEl.textContent);
+  } catch (err) {
+    console.error('Failed to parse analytics chart payload', err);
+    return;
+  }
+
+  const formatINR = (val) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(val);
+  };
+
+  const formatCompactINR = (val) => {
+    if (Math.abs(val) >= 10000000) return '₹' + (val / 10000000).toFixed(1) + 'Cr';
+    if (Math.abs(val) >= 100000) return '₹' + (val / 100000).toFixed(1) + 'L';
+    if (Math.abs(val) >= 1000) return '₹' + (val / 1000).toFixed(1) + 'k';
+    return '₹' + Number(val).toLocaleString('en-IN');
+  };
+
+  // Common Chart.js styling
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    Chart.defaults.color = '#64748b';
+  } else {
+    console.warn('Chart.js library not loaded.');
+    return;
+  }
+
+  // 1. GRAPH 1: Monthly Financial Performance
+  const finCanvas = document.getElementById('chartFinancialPerformance');
+  if (finCanvas && chartData.financial && chartData.financial.labels && chartData.financial.labels.length > 0) {
+    new Chart(finCanvas, {
+      type: 'bar',
+      data: {
+        labels: chartData.financial.labels,
+        datasets: [
+          {
+            label: 'Recorded Income',
+            data: chartData.financial.income,
+            backgroundColor: '#10b981',
+            borderColor: '#059669',
+            borderWidth: 1,
+            borderRadius: 4,
+            order: 2
+          },
+          {
+            label: 'Paid Expenses',
+            data: chartData.financial.expense,
+            backgroundColor: '#ef4444',
+            borderColor: '#dc2626',
+            borderWidth: 1,
+            borderRadius: 4,
+            order: 2
+          },
+          {
+            label: 'Net Cash Flow',
+            data: chartData.financial.net,
+            type: 'line',
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            borderWidth: 2.5,
+            pointBackgroundColor: '#4f46e5',
+            pointBorderColor: '#ffffff',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            tension: 0.25,
+            fill: false,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { boxWidth: 12, font: { size: 11, weight: '600' }, color: '#334155' }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 6,
+            callbacks: {
+              label: function(ctx) {
+                return `${ctx.dataset.label}: ${formatINR(ctx.raw)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          },
+          y: {
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              font: { size: 11 },
+              callback: function(val) { return formatCompactINR(val); }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 2. GRAPH 2: Event Attendance & Turnout
+  const eventCanvas = document.getElementById('chartEventAttendance');
+  if (eventCanvas && chartData.events && chartData.events.labels && chartData.events.labels.length > 0) {
+    const formattedLabels = chartData.events.labels.map(t => t.length > 22 ? t.substring(0, 20) + '…' : t);
+    new Chart(eventCanvas, {
+      type: 'bar',
+      data: {
+        labels: formattedLabels,
+        datasets: [
+          {
+            label: 'Confirmed Tickets Sold',
+            data: chartData.events.tickets_sold,
+            backgroundColor: '#3b82f6',
+            borderColor: '#2563eb',
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: 'Checked-in Attendees',
+            data: chartData.events.attendees,
+            backgroundColor: '#10b981',
+            borderColor: '#059669',
+            borderWidth: 1,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { boxWidth: 12, font: { size: 11, weight: '600' }, color: '#334155' }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 6,
+            callbacks: {
+              title: function(items) {
+                const idx = items[0].dataIndex;
+                return chartData.events.labels[idx];
+              },
+              afterBody: function(items) {
+                const idx = items[0].dataIndex;
+                const rate = chartData.events.attendance_rates[idx] || 0.0;
+                const cap = chartData.events.capacities[idx] || 0;
+                return `Turnout Rate: ${rate}%\nCapacity: ${cap} seats`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              stepSize: 1,
+              font: { size: 11 },
+              callback: function(val) { return Number(val).toLocaleString('en-IN'); }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 3. GRAPH 3: Membership Status Health
+  const memCanvas = document.getElementById('chartMembershipHealth');
+  if (memCanvas && chartData.membership && chartData.membership.labels && chartData.membership.labels.length > 0) {
+    const statusColors = {
+      'Active': { bg: '#10b981', border: '#059669' },
+      'Pending': { bg: '#f59e0b', border: '#d97706' },
+      'Expired': { bg: '#ef4444', border: '#dc2626' }
+    };
+    const defaultColor = { bg: '#6366f1', border: '#4f46e5' };
+
+    const bgColors = chartData.membership.labels.map(l => (statusColors[l] || defaultColor).bg);
+    const borderColors = chartData.membership.labels.map(l => (statusColors[l] || defaultColor).border);
+    const totalCount = chartData.membership.counts.reduce((a, b) => a + b, 0);
+
+    new Chart(memCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: chartData.membership.labels,
+        datasets: [{
+          data: chartData.membership.counts,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: 2,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 14, font: { size: 11, weight: '600' }, color: '#334155', padding: 16 }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 6,
+            callbacks: {
+              label: function(ctx) {
+                const count = ctx.raw;
+                const pct = totalCount > 0 ? ((count / totalCount) * 100).toFixed(1) : '0.0';
+                return ` ${ctx.label}: ${count} members (${pct}%)`;
+              }
+            }
+          }
+        },
+        cutout: '62%'
+      }
+    });
+  }
+
+  // 4. GRAPH 4: Merchandise Performance
+  const merchCanvas = document.getElementById('chartMerchandisePerformance');
+  if (merchCanvas && ((chartData.merchandise && chartData.merchandise.labels.length > 0) || (chartData.merch_trend && chartData.merch_trend.labels.length > 0))) {
+    let merchChartInstance;
+
+    function buildMerchConfig(mode) {
+      if (mode === 'trend' && chartData.merch_trend && chartData.merch_trend.labels.length > 0) {
+        return {
+          labels: chartData.merch_trend.labels,
+          datasets: [
+            {
+              label: 'Monthly Revenue',
+              data: chartData.merch_trend.revenues,
+              backgroundColor: '#8b5cf6',
+              borderColor: '#7c3aed',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Units Sold',
+              data: chartData.merch_trend.units_sold,
+              backgroundColor: '#06b6d4',
+              borderColor: '#0891b2',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y1'
+            }
+          ]
+        };
+      } else {
+        const labels = (chartData.merchandise.labels || []).map(n => n.length > 20 ? n.substring(0, 18) + '…' : n);
+        return {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Product Revenue',
+              data: chartData.merchandise.revenues || [],
+              backgroundColor: '#8b5cf6',
+              borderColor: '#7c3aed',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Units Sold',
+              data: chartData.merchandise.units_sold || [],
+              backgroundColor: '#06b6d4',
+              borderColor: '#0891b2',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y1'
+            }
+          ]
+        };
+      }
+    }
+
+    const initialMode = (chartData.merchandise.labels && chartData.merchandise.labels.length > 0) ? 'product' : 'trend';
+    const initialConfig = buildMerchConfig(initialMode);
+
+    merchChartInstance = new Chart(merchCanvas, {
+      type: 'bar',
+      data: initialConfig,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { boxWidth: 12, font: { size: 11, weight: '600' }, color: '#334155' }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 6,
+            callbacks: {
+              title: function(items) {
+                const idx = items[0].dataIndex;
+                const isTrend = window._currentMerchMode === 'trend';
+                if (isTrend) {
+                  return chartData.merch_trend.labels[idx];
+                } else {
+                  const cat = chartData.merchandise.categories[idx] ? ` (${chartData.merchandise.categories[idx]})` : '';
+                  return chartData.merchandise.labels[idx] + cat;
+                }
+              },
+              label: function(ctx) {
+                if (ctx.dataset.yAxisID === 'y') {
+                  return `${ctx.dataset.label}: ${formatINR(ctx.raw)}`;
+                } else {
+                  return `${ctx.dataset.label}: ${ctx.raw} unit(s)`;
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          },
+          y: {
+            type: 'linear',
+            position: 'left',
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              font: { size: 11 },
+              callback: function(val) { return formatCompactINR(val); }
+            }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: {
+              stepSize: 1,
+              font: { size: 11 },
+              callback: function(val) { return val + ' pcs'; }
+            }
+          }
+        }
+      }
+    });
+
+    window._currentMerchMode = initialMode;
+    window.toggleMerchChart = function(mode) {
+      window._currentMerchMode = mode;
+      const btnProd = document.getElementById('btnMerchProduct');
+      const btnTrend = document.getElementById('btnMerchTrend');
+      if (btnProd && btnTrend) {
+        if (mode === 'product') {
+          btnProd.classList.add('active');
+          btnTrend.classList.remove('active');
+        } else {
+          btnTrend.classList.add('active');
+          btnProd.classList.remove('active');
+        }
+      }
+      const newConfig = buildMerchConfig(mode);
+      merchChartInstance.data.labels = newConfig.labels;
+      merchChartInstance.data.datasets = newConfig.datasets;
+      merchChartInstance.update();
+    };
+  }
+
+  // --- Secondary Details Tab & Section Controls ---
+  window.switchDetailsTab = function(tabId) {
+    document.querySelectorAll('.details-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+    });
+    document.querySelectorAll('.details-tab-pane').forEach(pane => {
+      pane.classList.toggle('active', pane.id === tabId);
+    });
+  };
+
+  window.toggleAllDetailsSections = function() {
+    const isExpanded = document.body.classList.toggle('details-expanded-mode');
+    const toggleBtn = document.getElementById('btnToggleAllDetails');
+    const panes = document.querySelectorAll('.details-tab-pane');
+    const tabNav = document.querySelector('.details-tabs-nav');
+
+    if (isExpanded) {
+      panes.forEach(p => p.classList.add('expanded-view'));
+      if (toggleBtn) toggleBtn.textContent = 'Collapse to Tabs';
+      if (tabNav) tabNav.style.display = 'none';
+    } else {
+      panes.forEach(p => p.classList.remove('expanded-view'));
+      if (toggleBtn) toggleBtn.textContent = 'Expand All Sections';
+      if (tabNav) tabNav.style.display = 'flex';
+      const activeBtn = document.querySelector('.details-tab-btn.active') || document.querySelector('.details-tab-btn');
+      if (activeBtn) window.switchDetailsTab(activeBtn.getAttribute('data-tab'));
+    }
+  };
+
+  window.focusDetailsTab = function(tabId) {
+    if (document.body.classList.contains('details-expanded-mode')) {
+      window.toggleAllDetailsSections();
+    }
+    window.switchDetailsTab(tabId);
+    const target = document.getElementById('detailsSectionContainer');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+})();
+</script>
+{% endblock %}

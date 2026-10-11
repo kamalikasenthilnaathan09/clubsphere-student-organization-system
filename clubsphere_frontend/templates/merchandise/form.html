@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Add Merchandise — ClubSphere{% endblock %}
+{% block page_title %}Add New Merchandise Product{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Product Details & Initial Stock</h2>
+      <a href="{{ url_for('merchandise_list') }}" class="btn btn-sm btn-secondary">&larr; Back to Catalog</a>
+    </div>
+    <div class="card-body">
+      <form action="{{ url_for('merchandise_new') }}" method="POST">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="name">Product Name *</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Club Edition Hoodie / Official Tech T-Shirt" required autofocus>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="category">Category</label>
+            <select id="category" name="category" class="form-select">
+              <option value="Apparel">Apparel (T-Shirts, Hoodies, Caps)</option>
+              <option value="Stationery">Stationery (Notepads, Stickers, Pens)</option>
+              <option value="Accessories">Accessories (Bags, Lanyards, Bottles)</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="base_price">Selling Price per Unit (₹) *</label>
+          <input type="number" step="0.01" min="0" id="base_price" name="base_price" class="form-control" placeholder="499.00" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Product Description</label>
+          <textarea id="description" name="description" class="form-control" rows="2" placeholder="Material, colors, fit, and details..."></textarea>
+        </div>
+
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: var(--text-secondary); text-transform: uppercase;">
+          Initial Stock Quantities by Size
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+          Set initial units on hand for standard sizes. You can replenish stock later.
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="qty_S">Size Small (S)</label>
+            <input type="number" min="0" id="qty_S" name="qty_S" class="form-control" value="15">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="qty_M">Size Medium (M)</label>
+            <input type="number" min="0" id="qty_M" name="qty_M" class="form-control" value="25">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="qty_L">Size Large (L)</label>
+            <input type="number" min="0" id="qty_L" name="qty_L" class="form-control" value="25">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="qty_XL">Size Extra Large (XL)</label>
+            <input type="number" min="0" id="qty_XL" name="qty_XL" class="form-control" value="10">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Create Product & Variants</button>
+          <a href="{{ url_for('merchandise_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

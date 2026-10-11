@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Organization Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-page-container">
+
+  <!-- Header Welcome Banner & Quick Actions -->
+  <div class="dashboard-header-bar">
+    <div class="dashboard-welcome-info">
+      <div class="dashboard-user-greeting">
+        <h2 class="dashboard-welcome-name">Welcome back, {{ current_user.full_name or current_user.username }}</h2>
+        <span class="badge-role {% if current_user.role == 'Administrator' %}badge-role-admin{% elif current_user.role == 'Treasurer' %}badge-role-treasurer{% elif current_user.role == 'Event Organizer' %}badge-role-organizer{% elif current_user.role == 'Volunteer' %}badge-role-volunteer{% else %}badge-role-member{% endif %}">
+          {{ current_user.role }}
+        </span>
+      </div>
+      <p class="dashboard-subtitle">
+        Real-time overview of club membership, event operations, finances, and campus notices.
+      </p>
+    </div>
+    <div class="dashboard-header-actions">
+      <a href="{{ url_for('events_list') }}" class="btn btn-secondary btn-sm" title="View all events & tickets">
+        <span>📅</span> Events &amp; Tickets
+      </a>
+      <a href="{{ url_for('merchandise_list') }}" class="btn btn-secondary btn-sm" title="View merchandise & inventory">
+        <span>👕</span> Merchandise
+      </a>
+      {% if current_user.role in ['Volunteer', 'Event Organizer'] %}
+      <a href="{{ url_for('tasks_list') }}" class="btn btn-secondary btn-sm" title="View assigned tasks">
+        <span>📋</span> Tasks
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not is_demo_mode and total_members == 0 and upcoming_events == 0 and recorded_income == 0 %}
+  <div class="card dashboard-fresh-install-banner">
+    <div class="card-body" style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Fresh ClubSphere Installation</div>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;">
+          To explore with safe, pre-populated demonstration data without modifying this production database, run:
+          <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">$env:CLUB_SPHERE_DB="instance/clubsphere_demo.db"; python app.py</code>
+        </div>
+      </div>
+      <span class="badge badge-neutral">Production Database (Empty)</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 1. Top KPI Summary Metrics Grid -->
+  <div class="stats-grid dashboard-metrics-grid">
+    <!-- Members Metric -->
+    <div class="stat-card dashboard-kpi-card">
+      <div class="stat-card-header">
+        <span class="stat-title">Club Membership</span>
+        <div class="stat-icon icon-blue" aria-hidden="true">👥</div>
+      </div>
+      <div class="stat-value">{{ total_members }}</div>
+      <div class="stat-subtitle">
+        <span class="badge badge-active">{{ active_members }} Active</span>
+        {% if outstanding_dues > 0 %}
+        <span class="dashboard-dues-alert">{{ outstanding_dues | currency }} dues</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Events & Tickets Metric -->
+    <div class="stat-card dashboard-kpi-card">
+      <div class="stat-card-header">
+        <span class="stat-title">Upcoming Events</span>
+        <div class="stat-icon icon-sky" aria-hidden="true">📅</div>
+      </div>
+      <div class="stat-value">{{ upcoming_events }}</div>
+      <div class="stat-subtitle">
+        <strong>{{ total_tickets_sold }}</strong> sold &bull; <strong>{{ total_available_seats }}</strong> seats available
+      </div>
+    </div>
+
+    <!-- Recorded Income Metric -->
+    <div class="stat-card dashboard-kpi-card">
+      <div class="stat-card-header">
+        <span class="stat-title">Recorded Income</span>
+        <div class="stat-icon icon-green" aria-hidden="true">💵</div>
+      </div>
+      <div class="stat-value" style="color: var(--success);">{{ recorded_income | currency }}</div>
+      <div class="stat-subtitle">
+        Verified cash &amp; payments received
+      </div>
+    </div>
+
+    <!-- Paid Expenses & Net Cash Metric -->
+    <div class="stat-card dashboard-kpi-card">
+      <div class="stat-card-header">
+        <span class="stat-title">Paid Expenses &amp; Net</span>
+        <div class="stat-icon icon-red" aria-hidden="true">📉</div>
+      </div>
+      <div class="stat-value" style="color: var(--text-primary);">{{ paid_expenses | currency }}</div>
+      <div class="stat-subtitle">
+        Net: <strong style="color: {% if net_cash_movement >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+          {{ net_cash_movement | currency }}
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  {% if current_user.role != 'Administrator' %}
+  <!-- 2. Club AI Assistant Smart Card -->
+  <div class="card dashboard-copilot-card">
+    <div class="card-body dashboard-copilot-body">
+      <div class="dashboard-copilot-content">
+        <div class="dashboard-copilot-header">
+          <span class="dashboard-copilot-sparkle">✨</span>
+          <h3 class="dashboard-copilot-title">Club AI Assistant</h3>
+          <span class="badge dashboard-copilot-badge">Student &amp; Member Portal</span>
+        </div>
+        <p class="dashboard-copilot-desc">
+          Get instant answers about upcoming club events, ticket registration, schedules, announcements, and your membership status.
+        </p>
+        <div class="dashboard-copilot-chips">
+          <a href="{{ url_for('copilot_chat', prompt='What events are coming up?') }}" class="copilot-query-chip">
+            📅 What events are coming up?
+          </a>
+          <a href="{{ url_for('copilot_chat', prompt='How can I register for an event?') }}" class="copilot-query-chip">
+            🎟️ How can I register for an event?
+          </a>
+          <a href="{{ url_for('copilot_chat', prompt='What are the upcoming event dates?') }}" class="copilot-query-chip">
+            🗓️ What are the upcoming event dates?
+          </a>
+          <a href="{{ url_for('copilot_chat', prompt='Show the latest club announcements.') }}" class="copilot-query-chip">
+            📢 Show the latest club announcements.
+          </a>
+          <a href="{{ url_for('copilot_chat', prompt='How do I check my membership status?') }}" class="copilot-query-chip">
+            👤 How do I check my membership status?
+          </a>
+          {% if current_user.role == 'Treasurer' %}
+          <a href="{{ url_for('copilot_chat', prompt='Explain our income, expenses, and net cash.') }}" class="copilot-query-chip">
+            💰 Financial Breakdown
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="dashboard-copilot-btn-wrap">
+        <a href="{{ url_for('copilot_chat') }}" class="btn btn-primary dashboard-copilot-btn">
+          <span>Ask ClubSphere</span> &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 3. Stock Alerts Banner if any -->
+  {% if stock_alerts %}
+  <div class="card dashboard-alert-card dashboard-stock-alert">
+    <div class="card-header dashboard-alert-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.15rem;">⚠️</span>
+        <strong>Merchandise Low Stock Alerts ({{ stock_alerts | length }} item{{ 's' if stock_alerts|length > 1 else '' }})</strong>
+      </div>
+      <a href="{{ url_for('merchandise_list') }}" class="btn btn-sm btn-secondary">Manage Inventory</a>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Size</th>
+              <th>SKU</th>
+              <th>Stock Remaining</th>
+              <th>Threshold</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alert in stock_alerts %}
+            <tr>
+              <td><strong>{{ alert.item_name }}</strong> ({{ alert.category }})</td>
+              <td><span class="badge badge-neutral">{{ alert.size }}</span></td>
+              <td><code>{{ alert.sku }}</code></td>
+              <td>
+                <strong style="color: {% if alert.stock_quantity == 0 %}var(--danger){% else %}var(--warning){% endif %};">
+                  {{ alert.stock_quantity }} units
+                </strong>
+              </td>
+              <td>{{ alert.low_stock_threshold }} units</td>
+              <td>
+                {% if alert.stock_quantity == 0 %}
+                <span class="badge badge-expired">Out of Stock</span>
+                {% else %}
+                <span class="badge badge-pending">Low Stock</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 4. Pending Expenses Alert if any -->
+  {% if pending_expenses_count > 0 and current_user.role in ['Administrator', 'Treasurer'] %}
+  <div class="card dashboard-alert-card dashboard-expense-alert">
+    <div class="card-header dashboard-expense-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.15rem;">📑</span>
+        <strong>{{ pending_expenses_count }} Expense Request{{ 's' if pending_expenses_count > 1 else '' }} Pending Review</strong>
+        <span style="font-size: 0.85rem; color: var(--text-secondary);">({{ pending_expenses_amount | currency }} total)</span>
+      </div>
+      <a href="{{ url_for('expenses_list', status='Pending') }}" class="btn btn-sm btn-primary">Review Requests</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 5. Two-Column Operational Section: Upcoming Events & Financial Activity -->
+  <div class="dashboard-two-col-grid">
+    
+    <!-- Left Column: Upcoming Events -->
+    <div class="card dashboard-feed-card">
+      <div class="card-header dashboard-feed-header">
+        <div class="dashboard-card-title-group">
+          <span class="dashboard-header-icon">📅</span>
+          <h2 class="card-title">Upcoming Events</h2>
+        </div>
+        <div class="dashboard-feed-header-actions">
+          <a href="{{ url_for('events_list') }}" class="btn btn-sm btn-secondary" style="font-size: 0.78rem;">All Events</a>
+          {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+          <a href="{{ url_for('events_new') }}" class="btn btn-sm btn-primary" style="font-size: 0.78rem;">+ New Event</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if upcoming_events_list %}
+        <div class="table-responsive">
+          <table class="table dashboard-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Date &amp; Venue</th>
+                <th>Capacity &amp; Sales</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for evt in upcoming_events_list %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('event_view', event_id=evt.id) }}" class="dashboard-event-link">
+                    <strong>{{ evt.title }}</strong>
+                  </a>
+                  <div class="dashboard-event-pricing">
+                    Members: {{ evt.member_price | currency }} &bull; General: {{ evt.non_member_price | currency }}
+                  </div>
+                </td>
+                <td>
+                  <div style="font-weight: 500;">{{ evt.event_date | format_date }}</div>
+                  <div class="dashboard-venue-text">📍 {{ evt.venue }}</div>
+                </td>
+                <td>
+                  <div style="font-size: 0.82rem; margin-bottom: 3px;">
+                    <strong>{{ evt.sold_count }}</strong> / {{ evt.capacity }} seats
+                  </div>
+                  <div class="dashboard-progress-track">
+                    <div class="dashboard-progress-fill" style="width: {{ [((evt.sold_count / evt.capacity) * 100)|round|int, 100]|min }}%; background-color: {% if evt.sold_count >= evt.capacity %}var(--danger){% else %}var(--primary){% endif %};"></div>
+                  </div>
+                </td>
+                <td style="text-align: right;">
+                  {% if evt.sold_count < evt.capacity %}
+                  <a href="{{ url_for('events_sell_ticket', event_id=evt.id) }}" class="btn btn-sm btn-primary" style="padding: 4px 12px; font-size: 0.8rem;">Sell</a>
+                  {% else %}
+                  <span class="badge badge-expired">Full</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 36px 20px;">
+          <div class="empty-state-icon">📅</div>
+          <div class="empty-state-title">No upcoming events scheduled</div>
+          <p class="empty-state-text">Plan your first workshop, hackathon, or cultural gathering.</p>
+          {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+          <a href="{{ url_for('events_new') }}" class="btn btn-primary btn-sm">Create an Event</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Column: Recent Financial Activity -->
+    <div class="card dashboard-feed-card">
+      <div class="card-header dashboard-feed-header">
+        <div class="dashboard-card-title-group">
+          <span class="dashboard-header-icon">💰</span>
+          <h2 class="card-title">Recent Financial Activity</h2>
+        </div>
+        {% if current_user.role in ['Administrator', 'Treasurer'] %}
+        <a href="{{ url_for('finance_ledger') }}" class="btn btn-sm btn-secondary" style="font-size: 0.78rem;">Full Ledger &rarr;</a>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if recent_transactions %}
+        <div class="table-responsive">
+          <table class="table dashboard-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description &amp; Category</th>
+                <th>Type</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tx in recent_transactions %}
+              <tr>
+                <td class="dashboard-tx-date">{{ tx.transaction_date | format_date }}</td>
+                <td>
+                  <div style="font-weight: 500; font-size: 0.875rem;">{{ tx.description }}</div>
+                  <div class="dashboard-tx-meta">{{ tx.category }} &bull; {{ tx.payment_method }}</div>
+                </td>
+                <td>
+                  {% if tx.transaction_type == 'Income' %}
+                  <span class="badge badge-confirmed">Income</span>
+                  {% else %}
+                  <span class="badge badge-expired">Expense</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right; font-weight: 700; font-size: 0.9rem; color: {% if tx.transaction_type == 'Income' %}var(--success){% else %}var(--danger){% endif %};">
+                  {% if tx.transaction_type == 'Income' %}+{% else %}-{% endif %}{{ tx.amount | currency }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 36px 20px;">
+          <div class="empty-state-icon">💵</div>
+          <div class="empty-state-title">No financial transactions recorded yet</div>
+          <p class="empty-state-text">Income from memberships, tickets, and merchandise will appear automatically.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 6. Club Noticeboard & Announcements Section -->
+  <div class="card dashboard-noticeboard-card">
+    <div class="card-header dashboard-feed-header">
+      <div class="dashboard-card-title-group">
+        <span class="dashboard-header-icon">📢</span>
+        <h2 class="card-title">Club Noticeboard &amp; Announcements</h2>
+      </div>
+      <div class="dashboard-feed-header-actions">
+        <a href="{{ url_for('announcements_list') }}" class="btn btn-sm btn-secondary" style="font-size: 0.78rem;">View All Notices</a>
+        {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+        <a href="{{ url_for('announcements_list') }}" class="btn btn-sm btn-primary" style="font-size: 0.78rem;">+ Post Announcement</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body dashboard-noticeboard-body">
+      {% if recent_announcements %}
+      <div class="dashboard-announcements-grid">
+        {% for ann in recent_announcements %}
+        <div class="dashboard-notice-item {% if ann.priority == 'Urgent' %}notice-urgent{% elif ann.priority == 'Important' %}notice-important{% endif %}">
+          <div class="dashboard-notice-top">
+            <span class="badge badge-neutral" style="font-size: 0.7rem;">Audience: {{ ann.audience }}</span>
+            {% if ann.priority == 'Urgent' %}
+            <span class="badge badge-expired" style="font-size: 0.7rem;">Urgent</span>
+            {% elif ann.priority == 'Important' %}
+            <span class="badge badge-pending" style="font-size: 0.7rem;">Important</span>
+            {% endif %}
+          </div>
+          <h3 class="dashboard-notice-title">{{ ann.title }}</h3>
+          <p class="dashboard-notice-text">{{ ann.content }}</p>
+          <div class="dashboard-notice-footer">
+            <span>Posted by <strong>{{ ann.publisher_name }}</strong></span>
+            <span>{{ ann.created_at | format_date }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding: 28px;">
+        <div class="empty-state-title">No announcements published</div>
+        <p class="empty-state-text">Keep members and volunteers updated by publishing announcements.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

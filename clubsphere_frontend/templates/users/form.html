@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Create User — ClubSphere{% endblock %}
+{% block page_title %}Create New User Account{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">User Account Credentials & Role</h2>
+      <a href="{{ url_for('users_list') }}" class="btn btn-sm btn-secondary">&larr; Back to Users</a>
+    </div>
+    <div class="card-body">
+      <form action="{{ url_for('users_new') }}" method="POST">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="full_name">Full Name *</label>
+            <input type="text" id="full_name" name="full_name" class="form-control" placeholder="e.g. Priyanshu Roy" value="{{ full_name or '' }}" required autofocus>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="username">Username *</label>
+            <input type="text" id="username" name="username" class="form-control" placeholder="e.g. proy" value="{{ username or '' }}" required minlength="3">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address *</label>
+            <input type="email" id="email" name="email" class="form-control" placeholder="proy@example.org" value="{{ email or '' }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="role">System Role *</label>
+            <select id="role" name="role" class="form-select" required>
+              <option value="Member" {% if role == 'Member' %}selected{% endif %}>Member (View events, orders, own pass)</option>
+              <option value="Volunteer" {% if role == 'Volunteer' %}selected{% endif %}>Volunteer (Ticket check-in, task updates)</option>
+              <option value="Event Organizer" {% if role == 'Event Organizer' %}selected{% endif %}>Event Organizer (Events, ticketing, broadcasts)</option>
+              <option value="Treasurer" {% if role == 'Treasurer' %}selected{% endif %}>Treasurer (Finances, expenses, inventory, dues)</option>
+              <option value="Administrator" {% if role == 'Administrator' %}selected{% endif %}>Administrator (Full unrestricted access)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Initial Password *</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required minlength="6">
+          <div class="form-text">User can change their password after signing in.</div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Create Account</button>
+          <a href="{{ url_for('users_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

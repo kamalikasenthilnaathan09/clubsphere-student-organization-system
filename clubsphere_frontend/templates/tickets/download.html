@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket Pass — {{ ticket.ticket_ref }} — ClubSphere</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .ticket-container {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      max-width: 620px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .ticket-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #4338ca 100%);
+      color: #ffffff;
+      padding: 24px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ticket-download-logo {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      border-radius: 8px;
+      background-color: #ffffff;
+      padding: 3px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    .brand-sub {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #a5b4fc;
+      font-weight: 700;
+    }
+    .event-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin-top: 4px;
+      color: #ffffff;
+    }
+    .status-badge {
+      background: #10b981;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ticket-body {
+      padding: 28px;
+    }
+    .grid-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .info-group {
+      margin-bottom: 14px;
+    }
+    .info-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .info-val-strong {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .info-val-text {
+      font-size: 0.88rem;
+      color: #475569;
+    }
+    .qr-card {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      background: #fafbfc;
+      padding: 16px;
+      text-align: center;
+    }
+    .qr-box {
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 8px;
+      background: #ffffff;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-box svg {
+      width: 100%;
+      height: 100%;
+    }
+    .code-val {
+      font-family: monospace;
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #4338ca;
+      word-break: break-all;
+    }
+    .receipt-footer {
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: #64748b;
+      margin-bottom: 18px;
+    }
+    .disclaimer-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.75rem;
+      color: #64748b;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .actions-bar {
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-print {
+      background: #4338ca;
+      color: #ffffff;
+    }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .ticket-container { box-shadow: none; border: 1px solid #94a3b8; }
+      .actions-bar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ticket-container">
+    <div class="ticket-header">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <img src="{{ url_for('static', filename='images/odoo logo.jpg') }}" alt="ClubSphere Logo" class="ticket-download-logo">
+        <div>
+          <div class="brand-sub">ClubSphere Official Event Pass</div>
+          <h1 class="event-title">{{ ticket.event_title }}</h1>
+        </div>
+      </div>
+      <div>
+        <span class="status-badge">{% if ticket.checked_in %}ATTENDED{% else %}CONFIRMED{% endif %}</span>
+      </div>
+    </div>
+
+    <div class="ticket-body">
+      <div class="grid-row">
+        <div>
+          <div class="info-group">
+            <div class="info-label">Attendee Name</div>
+            <div class="info-val-strong">{{ ticket.purchaser_name }}</div>
+            <div class="info-val-text">{{ ticket.purchaser_email }}</div>
+          </div>
+
+          <div class="info-group">
+            <div class="info-label">Date &amp; Venue</div>
+            <div class="info-val-strong" style="font-size: 1rem;">{{ ticket.event_date }} at {{ ticket.event_time }}</div>
+            <div class="info-val-text">📍 {{ ticket.venue }}</div>
+          </div>
+
+          <div class="info-group">
+            <div class="info-label">Payment Reference</div>
+            <code style="font-size: 0.82rem; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">
+              {{ ticket.payment_ref or 'DEMO-TXN-VERIFIED' }}
+            </code>
+          </div>
+        </div>
+
+        <div class="qr-card">
+          <div class="qr-box">
+            {{ qr_svg | safe }}
+          </div>
+          <div class="info-label">Ticket ID</div>
+          <div class="code-val">{{ ticket.ticket_ref }}</div>
+        </div>
+      </div>
+
+      <div class="receipt-footer">
+        <div>Amount Paid: <strong style="color: #10b981;">₹{{ "%.2f"|format(ticket.price_paid) }}</strong> ({% if ticket.is_member_rate %}Member Rate{% else %}Standard{% endif %})</div>
+        <div>Issued: {{ ticket.created_at }}</div>
+      </div>
+
+      <div class="disclaimer-box">
+        🛡️ <strong>ClubSphere Verification Pass:</strong> Present this physical printout or digital pass at the Event Gate scanner. Simulated demo payment record authenticated in organization database.
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn btn-print" onclick="window.print()">🖨️ Print Ticket Pass</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

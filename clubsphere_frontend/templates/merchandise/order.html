@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Merchandise Order — ClubSphere{% endblock %}
+{% block page_title %}Place Customer Merchandise Order{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Order Details & Stock Deduction</h2>
+      <a href="{{ url_for('merchandise_list') }}" class="btn btn-sm btn-secondary">&larr; Back to Catalog</a>
+    </div>
+    <div class="card-body">
+      {% if variants %}
+      <form action="{{ url_for('merchandise_order') }}" method="POST">
+        
+        <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px;">
+          1. Select Item & Variant
+        </h3>
+
+        <div class="form-group">
+          <label class="form-label" for="variant_id">Product & Size Variant *</label>
+          <select id="variant_id" name="variant_id" class="form-select" required>
+            {% for v in variants %}
+            <option value="{{ v.id }}" {% if v.stock_quantity == 0 %}disabled{% endif %}>
+              {{ v.item_name }} — Size: {{ v.size }} ({{ v.effective_price | currency }}) &bull; Available: {{ v.stock_quantity }} units {% if v.stock_quantity == 0 %}[OUT OF STOCK]{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="quantity">Quantity *</label>
+            <input type="number" min="1" id="quantity" name="quantity" class="form-control" value="1" required>
+            <div class="form-text">System strictly validates that requested units do not exceed inventory.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="payment_method">Payment Mode *</label>
+            <select id="payment_method" name="payment_method" class="form-select">
+              <option value="UPI">UPI / QR Code</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Debit / Credit Card</option>
+            </select>
+          </div>
+        </div>
+
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px;">
+          2. Customer Information
+        </h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="customer_name">Customer Full Name *</label>
+            <input type="text" id="customer_name" name="customer_name" class="form-control" placeholder="e.g. Samarth Gowda" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="customer_email">Customer Email *</label>
+            <input type="email" id="customer_email" name="customer_email" class="form-control" placeholder="customer@example.com" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="customer_phone">Contact Phone</label>
+          <input type="tel" id="customer_phone" name="customer_phone" class="form-control" placeholder="+91 98765 43210">
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Confirm Order & Deduct Stock</button>
+          <a href="{{ url_for('merchandise_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-title">No merchandise products configured</div>
+        <p class="empty-state-text">Please add merchandise items and size variants before recording orders.</p>
+        <a href="{{ url_for('merchandise_new') }}" class="btn btn-primary btn-sm">+ Add Merchandise</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

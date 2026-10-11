@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% block title %}Feedback & Suggestions — ClubSphere{% endblock %}
+{% block page_title %}Student Feedback & Suggestions{% endblock %}
+
+{% block content %}
+<div class="feedback-page-container">
+  <!-- Info & Incentive Banner -->
+  <div class="card feedback-hero-card" style="margin-bottom: 24px; border-left: 4px solid #7c3aed;">
+    <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 6px 0; color: #0f172a;">Make Your Voice Heard in ClubSphere</h2>
+        <p style="margin: 0; font-size: 0.9rem; color: #475569;">
+          Submit constructive feedback on events, club leadership, or campus workshops. Each verified submission earns 
+          <span class="badge badge-success" style="font-size: 0.8rem; font-weight: 700;">+15 Engagement Points</span> in your student wallet.
+        </p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('achievements_dashboard') }}" class="btn btn-secondary btn-sm">🏆 View Points</a>
+        <a href="{{ url_for('my_memberships') }}" class="btn btn-secondary btn-sm">🪪 My Membership</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2-col" style="display: grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.4fr); gap: 24px; margin-bottom: 28px;">
+    <!-- Form Card: Submit Feedback -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title" style="margin: 0;">Submit Feedback & Ideas</h3>
+      </div>
+      <div class="card-body">
+        <form action="{{ url_for('feedback_center') }}" method="POST">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="feedback_type">Feedback Category <span style="color:#ef4444;">*</span></label>
+            <select name="feedback_type" id="feedback_type" class="form-control" required>
+              <option value="" disabled selected>Select category...</option>
+              <option value="Event">Event Experience & Organization</option>
+              <option value="Club Activity">General Club Activity</option>
+              <option value="Workshop">Workshop & Skills Session</option>
+              <option value="Membership">Club Membership & Benefits</option>
+              <option value="General Suggestion">General Campus Suggestion</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="event_id">Linked Event (Optional)</label>
+            <select name="event_id" id="event_id" class="form-control">
+              <option value="">None / General</option>
+              {% for ev in events %}
+              <option value="{{ ev.id }}">{{ ev.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Rating</label>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              {% for star in [5, 4, 3, 2, 1] %}
+              <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.88rem; color: #334155;">
+                <input type="radio" name="rating" value="{{ star }}" {% if star == 5 %}checked{% endif %}>
+                <span>{{ star }} ⭐</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="subject">Subject / Title <span style="color:#ef4444;">*</span></label>
+            <input type="text" name="subject" id="subject" class="form-control" placeholder="Brief summary of your feedback" required minlength="3">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="message">Detailed Feedback / Suggestions <span style="color:#ef4444;">*</span></label>
+            <textarea name="message" id="message" rows="4" class="form-control" placeholder="What went well? What can be improved? Any ideas for upcoming sessions?" required minlength="5"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem; color: #1e293b;">
+              <input type="checkbox" name="is_anonymous" value="1">
+              <span><strong>Submit Anonymously</strong> (your name will be masked from organizers)</span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            🚀 Submit Feedback & Earn 15 Points
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right Side: My Feedback Submissions -->
+    <div class="card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="card-title" style="margin: 0;">My Feedback Submissions</h3>
+        <span class="badge badge-info">{{ my_feedbacks | length }} Total</span>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        {% if my_feedbacks %}
+        <div style="overflow-x: auto;">
+          <table class="table" style="margin: 0;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category / Subject</th>
+                <th>Rating</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fb in my_feedbacks %}
+              <tr>
+                <td style="font-size: 0.82rem; color: #64748b; white-space: nowrap;">
+                  {{ fb.created_at[:10] }}
+                </td>
+                <td>
+                  <div style="font-weight: 600; color: #0f172a;">{{ fb.subject }}</div>
+                  <div style="font-size: 0.78rem; color: #64748b;">
+                    {{ fb.feedback_type }} {% if fb.event_title %}&bull; <em>{{ fb.event_title }}</em>{% endif %}
+                  </div>
+                  {% if fb.admin_notes %}
+                  <div style="margin-top: 6px; padding: 6px 10px; background: #f1f5f9; border-left: 3px solid #0284c7; border-radius: 4px; font-size: 0.8rem; color: #0f172a;">
+                    <strong>Staff response:</strong> {{ fb.admin_notes }}
+                  </div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if fb.rating %}
+                  <span style="font-weight: 700; color: #d97706;">{{ fb.rating }} ⭐</span>
+                  {% else %}
+                  <span style="color: #94a3b8;">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if fb.status == 'Submitted' %}
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1;">Submitted</span>
+                  {% elif fb.status == 'Reviewed' %}
+                    <span class="badge" style="background:#fef3c7; color:#92400e;">Reviewed</span>
+                  {% elif fb.status == 'Actioned' %}
+                    <span class="badge badge-success">Actioned</span>
+                  {% else %}
+                    <span class="badge" style="background:#f1f5f9; color:#475569;">Closed</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div style="padding: 40px 20px; text-align: center; color: #64748b;">
+          <p style="margin: 0 0 10px 0; font-size: 1.1rem;">No feedback submitted yet.</p>
+          <p style="margin: 0; font-size: 0.85rem;">Use the form to share thoughts on your recent club activities and start earning engagement points!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Review Console (Admin & Event Organizer) -->
+  {% if is_staff %}
+  <div class="card" style="margin-top: 32px; border-top: 3px solid #0284c7;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <h3 class="card-title" style="margin: 0;">🛡️ Staff Feedback Moderation & Review Console</h3>
+        <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b;">Review suggestions from students, update status, and track resolutions. Anonymity is strictly enforced.</p>
+      </div>
+      <span class="badge badge-secondary">{{ admin_feedbacks | length }} Submissions Received</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      {% if admin_feedbacks %}
+      <div style="overflow-x: auto;">
+        <table class="table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Student Author</th>
+              <th>Category & Event</th>
+              <th>Message</th>
+              <th>Rating</th>
+              <th>Status & Moderation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for af in admin_feedbacks %}
+            <tr>
+              <td style="font-weight: 600; color: #64748b;">#{{ af.id }}</td>
+              <td>
+                {% if af.is_anonymous %}
+                <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px dashed #cbd5e1;">🔒 Anonymous Student</span>
+                {% else %}
+                <div style="font-weight: 600; color: #0f172a;">{{ af.full_name }}</div>
+                <div style="font-size: 0.78rem; color: #64748b;">@{{ af.username }} &bull; {{ af.email }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge" style="background:#ede9fe; color:#6d28d9; margin-bottom: 4px;">{{ af.feedback_type }}</span>
+                {% if af.event_title %}
+                <div style="font-size: 0.8rem; color: #334155; font-weight: 500;">{{ af.event_title }}</div>
+                {% endif %}
+              </td>
+              <td style="max-width: 320px;">
+                <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">{{ af.subject }}</div>
+                <div style="font-size: 0.84rem; color: #475569; line-height: 1.4;">{{ af.message }}</div>
+                {% if af.admin_notes %}
+                <div style="margin-top: 6px; font-size: 0.78rem; color: #0369a1; background: #e0f2fe; padding: 4px 8px; border-radius: 4px;">
+                  <strong>Admin Notes:</strong> {{ af.admin_notes }}
+                </div>
+                {% endif %}
+              </td>
+              <td>
+                {% if af.rating %}
+                <span style="font-weight: 700; color: #d97706;">{{ af.rating }} ⭐</span>
+                {% else %}
+                <span style="color: #94a3b8;">—</span>
+                {% endif %}
+              </td>
+              <td style="white-space: nowrap;">
+                <form action="{{ url_for('feedback_update_status', feedback_id=af.id) }}" method="POST" style="display: flex; flex-direction: column; gap: 6px; min-width: 170px;">
+                  <div style="display: flex; gap: 6px;">
+                    <select name="status" class="form-control" style="font-size: 0.8rem; padding: 4px 8px; height: auto;">
+                      <option value="Submitted" {% if af.status == 'Submitted' %}selected{% endif %}>Submitted</option>
+                      <option value="Reviewed" {% if af.status == 'Reviewed' %}selected{% endif %}>Reviewed</option>
+                      <option value="Actioned" {% if af.status == 'Actioned' %}selected{% endif %}>Actioned</option>
+                      <option value="Closed" {% if af.status == 'Closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.8rem;">Save</button>
+                  </div>
+                  <input type="text" name="admin_notes" class="form-control" style="font-size: 0.76rem; padding: 4px 6px; height: auto;" placeholder="Add resolution note..." value="{{ af.admin_notes or '' }}">
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding: 30px; text-align: center; color: #64748b;">
+        No student feedback submitted yet.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

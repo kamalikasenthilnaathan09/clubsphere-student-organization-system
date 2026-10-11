@@ -1,0 +1,393 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased min-h-screen selection:bg-brand-500/20 selection:text-brand-800;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+}
+
+/* =========================================================
+   1. GLOBAL TYPOGRAPHY & VISIBILITY (BRIGHT THEME)
+   ========================================================= */
+
+/* All headings default to bold dark slate across the app */
+h1, h2, h3, h4, h5, h6 {
+  color: #0f172a;
+}
+
+/* Any standalone light text rendered on bright surfaces becomes readable dark slate */
+body .text-slate-100 {
+  color: #0f172a !important;
+}
+
+body .text-slate-200 {
+  color: #1e293b !important;
+}
+
+body .text-slate-300 {
+  color: #334155 !important;
+}
+
+body .text-slate-400 {
+  color: #475569 !important;
+}
+
+body .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Rich saturated brand/accent colors with high contrast on bright backgrounds */
+.text-brand-300,
+.text-brand-400 {
+  color: #6d28d9 !important;
+}
+
+.text-teal-300,
+.text-teal-400 {
+  color: #0f766e !important;
+}
+
+.text-amber-300,
+.text-amber-400 {
+  color: #b45309 !important;
+}
+
+.text-red-300,
+.text-red-400 {
+  color: #b91c1c !important;
+}
+
+/* Standalone .text-white on bright background becomes dark slate (unless on colored buttons/gradients) */
+.text-white {
+  color: #0f172a;
+}
+
+/* =========================================================
+   2. WHITE TEXT EXCEPTIONS (COLORED BUTTONS & GRADIENTS)
+   ========================================================= */
+
+/* Hero Banners with Vibrant Gradient Backgrounds */
+div[class*="from-violet-600"] > div > div > h1,
+div[class*="from-violet-600"] > div > div > p,
+div[class*="from-violet-600"] > div > div > div > span,
+div[class*="from-brand-600"] > div > div > h1,
+div[class*="from-brand-600"] > div > div > p,
+div[class*="from-brand-600"] > div > div > div > span {
+  color: #ffffff !important;
+}
+
+/* Translucent/glass buttons on gradient banners MUST have white text */
+a[class*="bg-white/15"],
+a[class*="bg-white/20"],
+a[class*="bg-white/25"],
+a[class*="bg-white/30"],
+a[class*="bg-white/15"] *,
+a[class*="bg-white/20"] *,
+a[class*="bg-white/25"] *,
+a[class*="bg-white/30"] *,
+button[class*="bg-white/15"],
+button[class*="bg-white/20"],
+button[class*="bg-white/25"],
+button[class*="bg-white/30"],
+button[class*="bg-white/15"] *,
+button[class*="bg-white/20"] *,
+button[class*="bg-white/25"] *,
+button[class*="bg-white/30"] * {
+  color: #ffffff !important;
+}
+
+/* Solid white buttons anywhere (including inside gradient banners) MUST have rich dark/indigo text */
+a[class*="bg-white"]:not([class*="bg-white/"]),
+a[class*="bg-white"]:not([class*="bg-white/"]) *,
+button[class*="bg-white"]:not([class*="bg-white/"]),
+button[class*="bg-white"]:not([class*="bg-white/"]) * {
+  color: #4338ca !important;
+}
+
+/* Gradient and Colored Action Buttons & Pills */
+button[class*="bg-gradient-"],
+button[class*="bg-brand-600"],
+button[class*="bg-indigo-600"],
+button[class*="bg-violet-600"],
+button[class*="bg-teal-600"],
+button[class*="bg-emerald-600"],
+button[class*="bg-red-600"],
+button[class*="bg-red-500"],
+a[class*="bg-gradient-"],
+a[class*="bg-brand-600"],
+a[class*="bg-indigo-600"],
+a[class*="bg-violet-600"],
+button[class*="bg-gradient-"] *,
+button[class*="bg-brand-600"] *,
+button[class*="bg-indigo-600"] *,
+button[class*="bg-violet-600"] *,
+button[class*="bg-teal-600"] *,
+button[class*="bg-emerald-600"] *,
+button[class*="bg-red-600"] *,
+button[class*="bg-red-500"] *,
+a[class*="bg-gradient-"] *,
+a[class*="bg-brand-600"] *,
+a[class*="bg-indigo-600"] *,
+a[class*="bg-violet-600"] *,
+span.text-white.bg-red-500,
+span.text-white.bg-emerald-500 {
+  color: #ffffff !important;
+}
+
+/* Secondary Buttons & Light Pills must preserve dark text */
+button[class*="bg-slate-"],
+button[class*="bg-slate-"] *,
+a[class*="bg-slate-"],
+a[class*="bg-slate-"] *,
+button[class*="bg-navy-800"],
+button[class*="bg-navy-800"] *,
+button[class*="bg-navy-900"],
+button[class*="bg-navy-900"] *,
+button[class*="bg-teal-50"],
+button[class*="bg-teal-50"] *,
+button[class*="bg-indigo-50"],
+button[class*="bg-indigo-50"] *,
+button[class*="bg-violet-50"],
+button[class*="bg-violet-50"] *,
+button[class*="bg-emerald-50"],
+button[class*="bg-emerald-50"] *,
+button[class*="bg-amber-50"],
+button[class*="bg-amber-50"] *,
+button[class*="bg-red-50"],
+button[class*="bg-red-50"] * {
+  color: #1e293b !important;
+}
+
+/* =========================================================
+   3. BRIGHT SURFACE & CARD UTILITIES
+   ========================================================= */
+
+.glass-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(100, 116, 139, 0.08), 0 2px 6px -1px rgba(100, 116, 139, 0.04) !important;
+}
+
+.glass-panel-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel-hover:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 12px 30px -4px rgba(99, 102, 241, 0.12), 0 4px 12px -2px rgba(99, 102, 241, 0.06) !important;
+  transform: translateY(-2px);
+}
+
+/* Dark midnight surfaces remapped to clean white / soft slate */
+.bg-navy-950,
+.bg-navy-950\/95,
+.bg-navy-950\/90,
+.bg-navy-950\/80,
+.bg-navy-950\/60,
+.bg-navy-950\/40 {
+  background-color: #ffffff !important;
+}
+
+.bg-navy-900,
+.bg-navy-900\/98,
+.bg-navy-900\/95,
+.bg-navy-900\/90,
+.bg-navy-900\/80,
+.bg-navy-900\/60,
+.bg-navy-900\/40 {
+  background-color: #f8fafc !important;
+}
+
+.bg-navy-800,
+.bg-navy-800\/90,
+.bg-navy-800\/80,
+.bg-navy-800\/60 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Replace midnight dark gradients with clean white / light slate */
+.from-navy-900.via-navy-950.to-navy-950,
+.bg-gradient-to-b.from-navy-900.via-navy-950.to-navy-950,
+[class*="from-brand-950\/40"][class*="to-navy-950"] {
+  background-image: none !important;
+  background-color: #ffffff !important;
+}
+
+/* Borders remapped to light slate */
+.border-slate-800,
+.border-slate-800\/60,
+.border-slate-800\/50,
+.border-slate-700,
+.border-slate-700\/60,
+.border-slate-700\/50,
+.border-slate-900,
+.border-brand-500\/10,
+.border-brand-500\/15,
+.border-brand-500\/20,
+.border-brand-500\/25,
+.border-brand-500\/30 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Tab buttons styling */
+.bg-navy-900\/60 {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.bg-navy-900\/60:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* =========================================================
+   4. FORMS, INPUTS & TABLES
+   ========================================================= */
+
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+select:focus {
+  background-color: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+thead,
+thead[class*="bg-navy-"] {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+tbody tr,
+tbody tr[class*="hover:bg-"] {
+  border-color: #f1f5f9 !important;
+}
+
+tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* =========================================================
+   5. FEEDBACK, AUDIT & VALIDATION CALLOUTS
+   ========================================================= */
+
+.bg-teal-950,
+.bg-teal-950\/40,
+.bg-teal-950\/30 {
+  background-color: #f0fdfa !important;
+  border-color: #99f6e4 !important;
+  color: #0f766e !important;
+}
+
+.bg-amber-950,
+.bg-amber-950\/40,
+.bg-amber-950\/80 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+
+.bg-red-950,
+.bg-red-950\/40,
+.bg-red-950\/60,
+.bg-red-950\/80 {
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
+}
+
+.bg-brand-950,
+.bg-brand-950\/40,
+.bg-brand-950\/50 {
+  background-color: #f5f3ff !important;
+  border-color: #ddd6fe !important;
+  color: #5b21b6 !important;
+}
+
+/* Vibrant Combined Color Callout Utilities */
+.callout-violet {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%) !important;
+  border: 1px solid #ddd6fe !important;
+  color: #5b21b6 !important;
+}
+
+.callout-teal {
+  background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%) !important;
+  border: 1px solid #99f6e4 !important;
+  color: #0f766e !important;
+}
+
+.callout-blue {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+  border: 1px solid #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+.callout-emerald {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+.callout-amber {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+  border: 1px solid #fde68a !important;
+  color: #b45309 !important;
+}
+
+.callout-rose {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%) !important;
+  border: 1px solid #fecdd3 !important;
+  color: #be123c !important;
+}
+
+.glow-violet {
+  box-shadow: 0 8px 25px -4px rgba(139, 92, 246, 0.25);
+}
+
+.glow-teal {
+  box-shadow: 0 8px 25px -4px rgba(20, 184, 166, 0.25);
+}
+
+/* Clean, modern scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

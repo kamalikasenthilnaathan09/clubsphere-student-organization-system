@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Register Member — ClubSphere{% endblock %}
+{% block page_title %}Register New Member{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Member Registration Details</h2>
+      <a href="{{ url_for('members_list') }}" class="btn btn-sm btn-secondary">&larr; Back to Directory</a>
+    </div>
+    <div class="card-body">
+      <form action="{{ url_for('members_new') }}" method="POST">
+        
+        <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; color: var(--text-secondary); text-transform: uppercase;">
+          Personal & Academic Info
+        </h3>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="full_name">Full Name *</label>
+            <input type="text" id="full_name" name="full_name" class="form-control" placeholder="e.g. Maya Sharma" value="{{ form_data.full_name if form_data else '' }}" required autofocus>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address *</label>
+            <input type="email" id="email" name="email" class="form-control" placeholder="maya.sharma@nmit.ac.in" value="{{ form_data.email if form_data else '' }}" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone" class="form-control" placeholder="+91 98765 43210" value="{{ form_data.phone if form_data else '' }}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="student_id">Student / University ID</label>
+            <input type="text" id="student_id" name="student_id" class="form-control" placeholder="1NT23CS045" value="{{ form_data.student_id if form_data else '' }}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="department">Department / Major</label>
+            <input type="text" id="department" name="department" class="form-control" placeholder="Computer Science" value="{{ form_data.department if form_data else '' }}">
+          </div>
+        </div>
+
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; color: var(--text-secondary); text-transform: uppercase;">
+          Membership Plan & Duration
+        </h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="membership_type">Membership Tier</label>
+            <select id="membership_type" name="membership_type" class="form-select">
+              <option value="Annual" {% if form_data and form_data.membership_type == 'Annual' %}selected{% endif %}>Annual Membership (1 Year)</option>
+              <option value="Semester" {% if form_data and form_data.membership_type == 'Semester' %}selected{% endif %}>Semester Membership (6 Months)</option>
+              <option value="Lifetime" {% if form_data and form_data.membership_type == 'Lifetime' %}selected{% endif %}>Lifetime / Multi-Year</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="join_date">Start Date *</label>
+            <input type="date" id="join_date" name="join_date" class="form-control" value="{{ form_data.join_date if form_data else default_join }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="expiry_date">Expiry Date *</label>
+            <input type="date" id="expiry_date" name="expiry_date" class="form-control" value="{{ form_data.expiry_date if form_data else default_expiry }}" required>
+            <div class="form-text">Must be on or after start date.</div>
+          </div>
+        </div>
+
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; color: var(--text-secondary); text-transform: uppercase;">
+          Fees & Initial Payment
+        </h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="membership_fee">Membership Fee (₹) *</label>
+            <input type="number" step="0.01" min="0" id="membership_fee" name="membership_fee" class="form-control" placeholder="500.00" value="{{ form_data.membership_fee if form_data else '500.00' }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="initial_payment">Initial Payment Collected (₹)</label>
+            <input type="number" step="0.01" min="0" id="initial_payment" name="initial_payment" class="form-control" placeholder="500.00" value="{{ form_data.initial_payment if form_data else '500.00' }}">
+            <div class="form-text">Enter 0 if dues are unpaid.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="payment_method">Payment Mode</label>
+            <select id="payment_method" name="payment_method" class="form-select">
+              <option value="UPI">UPI / QR Code</option>
+              <option value="Cash">Cash</option>
+              <option value="Bank Transfer">Bank Transfer / NEFT</option>
+              <option value="Card">Debit / Credit Card</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="payment_ref">Payment Reference / Transaction ID</label>
+          <input type="text" id="payment_ref" name="payment_ref" class="form-control" placeholder="e.g. UPI-20261010-89872" value="{{ form_data.payment_ref if form_data else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notes">Notes / Remarks</label>
+          <textarea id="notes" name="notes" class="form-control" rows="2" placeholder="Optional notes about club orientation, interests, etc.">{{ form_data.notes if form_data else '' }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Register Member</button>
+          <a href="{{ url_for('members_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

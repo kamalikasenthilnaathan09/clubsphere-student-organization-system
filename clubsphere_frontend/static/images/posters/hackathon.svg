@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="cyberBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050814" />
+      <stop offset="40%" stop-color="#0a122c" />
+      <stop offset="80%" stop-color="#0e1738" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <!-- Neon Cyan & Electric Violet Gradients -->
+    <linearGradient id="cyanNeon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#4facfe" />
+    </linearGradient>
+    <linearGradient id="purpleNeon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#c084fc" />
+    </linearGradient>
+
+    <!-- Glow Filters -->
+    <filter id="neonGlowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="neonGlowPurple" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Tech Grid Pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(56, 189, 248, 0.07)" stroke-width="1" />
+    </pattern>
+  </defs>
+
+  <!-- Background Layer -->
+  <rect width="800" height="450" fill="url(#cyberBg)" />
+  <rect width="800" height="450" fill="url(#grid)" />
+
+  <!-- Ambient Light Orbs -->
+  <circle cx="650" cy="140" r="180" fill="#00f2fe" opacity="0.12" filter="url(#neonGlowCyan)" />
+  <circle cx="160" cy="300" r="190" fill="#7c3aed" opacity="0.18" filter="url(#neonGlowPurple)" />
+
+  <!-- Circuit Trace Artwork (Left & Center) -->
+  <g stroke="rgba(56, 189, 248, 0.35)" stroke-width="1.5" fill="none">
+    <path d="M -20 180 L 120 180 L 160 220 L 260 220" />
+    <path d="M 60 40 L 140 120 L 220 120" />
+    <path d="M 80 400 L 180 300 L 250 300" stroke="rgba(192, 132, 252, 0.35)" />
+    <path d="M 520 80 L 580 80 L 620 120 L 720 120" />
+    <path d="M 560 380 L 640 300 L 760 300" stroke="rgba(192, 132, 252, 0.35)" />
+  </g>
+
+  <!-- Circuit Trace Nodes -->
+  <circle cx="260" cy="220" r="4" fill="#00f2fe" filter="url(#neonGlowCyan)" />
+  <circle cx="220" cy="120" r="3.5" fill="#38bdf8" />
+  <circle cx="250" cy="300" r="4" fill="#c084fc" filter="url(#neonGlowPurple)" />
+  <circle cx="520" cy="80" r="3.5" fill="#00f2fe" />
+  <circle cx="620" cy="120" r="3.5" fill="#38bdf8" />
+
+  <!-- Right Side: Cybernetic AI Core Graphic -->
+  <g transform="translate(620, 220)">
+    <!-- Outer Hex Shield -->
+    <polygon points="0,-110 95,-55 95,55 0,110 -95,55 -95,-55" fill="rgba(15, 23, 42, 0.75)" stroke="url(#cyanNeon)" stroke-width="2.5" />
+    <polygon points="0,-95 82,-47 82,47 0,95 -82,47 -82,-47" fill="none" stroke="rgba(192, 132, 252, 0.4)" stroke-width="1" stroke-dasharray="6 4" />
+    
+    <!-- Rotating Node Ring Elements -->
+    <circle cx="0" cy="0" r="68" fill="none" stroke="rgba(56, 189, 248, 0.25)" stroke-width="1" />
+    <circle cx="0" cy="0" r="50" fill="#0f172a" stroke="url(#accentGrad)" stroke-width="2" />
+
+    <!-- AI Robotic Brain / Neural Processor Core -->
+    <path d="M -22 -20 C -12 -34 12 -34 22 -20 C 30 -5 26 18 14 26 C 4 34 -4 34 -14 26 C -26 18 -30 -5 -22 -20 Z" fill="none" stroke="#00f2fe" stroke-width="2" />
+    <circle cx="0" cy="-6" r="10" fill="url(#cyanNeon)" filter="url(#neonGlowCyan)" />
+    <!-- Neural Nodes -->
+    <circle cx="-16" cy="-14" r="3" fill="#ffffff" />
+    <circle cx="16" cy="-14" r="3" fill="#ffffff" />
+    <circle cx="-12" cy="12" r="3" fill="#c084fc" />
+    <circle cx="12" cy="12" r="3" fill="#c084fc" />
+    <line x1="-16" y1="-14" x2="0" y2="-6" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+    <line x1="16" y1="-14" x2="0" y2="-6" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+    <line x1="-12" y1="12" x2="0" y2="-6" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+    <line x1="12" y1="12" x2="0" y2="-6" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+
+    <!-- Status Chip -->
+    <rect x="-44" y="65" width="88" height="22" rx="6" fill="#020617" stroke="#38bdf8" stroke-width="1" />
+    <text x="0" y="80" font-family="'Inter', -apple-system, sans-serif" font-size="10" font-weight="700" fill="#38bdf8" text-anchor="middle" letter-spacing="1">AI CORE v2.6</text>
+  </g>
+
+  <!-- Left Side: Poster Content & Typography -->
+  <!-- Top Badge / Pill -->
+  <g transform="translate(60, 60)">
+    <rect width="250" height="30" rx="15" fill="rgba(6, 182, 212, 0.15)" stroke="rgba(6, 182, 212, 0.5)" stroke-width="1" />
+    <circle cx="16" cy="15" r="4.5" fill="#00f2fe" filter="url(#neonGlowCyan)" />
+    <text x="32" y="20" font-family="'Inter', -apple-system, sans-serif" font-size="11" font-weight="800" fill="#38bdf8" letter-spacing="2">ANNUAL TECH FLAGSHIP</text>
+  </g>
+
+  <!-- Big Bold Title -->
+  <text x="60" y="145" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="900" fill="#ffffff" letter-spacing="-0.5">
+    AI &amp; ROBOTICS
+  </text>
+  <text x="60" y="195" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="800" fill="url(#cyanNeon)" letter-spacing="0">
+    National Hackathon 2026
+  </text>
+
+  <!-- Tagline / Pitch -->
+  <text x="60" y="240" font-family="'Inter', -apple-system, sans-serif" font-size="15" font-weight="500" fill="#94a3b8" letter-spacing="0.2">
+    Build intelligent systems, robotics controllers &amp; autonomous agent architectures.
+  </text>
+
+  <!-- Highlights Badges -->
+  <g transform="translate(60, 275)">
+    <!-- Badge 1: 36h Build -->
+    <rect x="0" y="0" width="130" height="34" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="1" />
+    <text x="65" y="22" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" fill="#e0f2fe" text-anchor="middle">⚡ 36H SPRINT</text>
+
+    <!-- Badge 2: ₹50K Prize -->
+    <rect x="142" y="0" width="145" height="34" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(192, 132, 252, 0.4)" stroke-width="1" />
+    <text x="214" y="22" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" fill="#f3e8ff" text-anchor="middle">🏆 ₹50,000 PRIZES</text>
+
+    <!-- Badge 3: Hardware Kits -->
+    <rect x="299" y="0" width="140" height="34" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="1" />
+    <text x="369" y="22" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" fill="#e0f2fe" text-anchor="middle">🤖 HARDWARE LAB</text>
+  </g>
+
+  <!-- Bottom Details Bar -->
+  <g transform="translate(60, 360)">
+    <line x1="0" y1="0" x2="680" y2="0" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1" />
+    <text x="0" y="32" font-family="'Inter', -apple-system, sans-serif" font-size="13" font-weight="700" fill="#38bdf8">
+      📍 MAIN AUDITORIUM &amp; INNOVATION LAB &bull; TECH CAMPUS
+    </text>
+    <text x="680" y="32" font-family="'Inter', -apple-system, sans-serif" font-size="13" font-weight="800" fill="#c084fc" text-anchor="end">
+      CLUBS PHERE TECH LEAGUE &bull; 2026
+    </text>
+  </g>
+</svg>

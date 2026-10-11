@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="navySummitBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050814" />
+      <stop offset="35%" stop-color="#0a1026" />
+      <stop offset="70%" stop-color="#141238" />
+      <stop offset="100%" stop-color="#1e184a" />
+    </linearGradient>
+
+    <!-- Regal Gold Gradients -->
+    <linearGradient id="regalGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="30%" stop-color="#f59e0b" />
+      <stop offset="70%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#fef08a" />
+    </linearGradient>
+
+    <linearGradient id="royalViolet" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#c084fc" />
+    </linearGradient>
+
+    <linearGradient id="stageBeamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#050814" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Subtle Geometric Line Pattern -->
+    <pattern id="summitFacet" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 30 30 L 0 0 M 30 30 L 30 60" fill="none" stroke="rgba(234, 179, 8, 0.05)" stroke-width="1" />
+    </pattern>
+
+    <!-- Glow Filter -->
+    <filter id="goldGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="800" height="450" fill="url(#navySummitBg)" />
+  <rect width="800" height="450" fill="url(#summitFacet)" />
+
+  <!-- Ambient Light Orbs -->
+  <circle cx="640" cy="160" r="190" fill="#f59e0b" opacity="0.12" filter="url(#goldGlow)" />
+  <circle cx="200" cy="320" r="180" fill="#8b5cf6" opacity="0.15" filter="url(#goldGlow)" />
+
+  <!-- Stage Light Beams -->
+  <polygon points="640,0 740,450 540,450" fill="url(#stageBeamGrad)" opacity="0.3" />
+  <polygon points="300,0 420,450 200,450" fill="rgba(139, 92, 246, 0.06)" />
+
+  <!-- Executive Stage Graphic & Alumni Network Emblem (Right Side) -->
+  <g transform="translate(620, 220)">
+    <!-- Outer Shield / Diamond Facet -->
+    <polygon points="0,-120 105,-35 85,95 -85,95 -105,-35" fill="rgba(10, 16, 38, 0.85)" stroke="url(#regalGold)" stroke-width="2.5" />
+    <polygon points="0,-105 90,-30 72,82 -72,82 -90,-30" fill="none" stroke="rgba(192, 132, 252, 0.35)" stroke-width="1" stroke-dasharray="6 4" />
+
+    <!-- Central Globe & Network Nodes -->
+    <circle cx="0" cy="0" r="58" fill="#0d1430" stroke="url(#royalViolet)" stroke-width="2" />
+    <!-- Lat/Long arcs -->
+    <ellipse cx="0" cy="0" rx="58" ry="24" fill="none" stroke="rgba(253, 224, 71, 0.3)" stroke-width="1" />
+    <ellipse cx="0" cy="0" rx="26" ry="58" fill="none" stroke="rgba(253, 224, 71, 0.3)" stroke-width="1" />
+    <line x1="-58" y1="0" x2="58" y2="0" stroke="rgba(253, 224, 71, 0.3)" stroke-width="1" />
+    <line x1="0" y1="-58" x2="0" y2="58" stroke="rgba(253, 224, 71, 0.3)" stroke-width="1" />
+
+    <!-- Interconnected Alumni Network Stars -->
+    <circle cx="0" cy="-28" r="5" fill="#fde047" filter="url(#goldGlow)" />
+    <circle cx="-32" cy="12" r="4" fill="#60a5fa" />
+    <circle cx="34" cy="8" r="4" fill="#c084fc" />
+    <circle cx="0" cy="34" r="3.5" fill="#fde047" />
+
+    <line x1="0" y1="-28" x2="-32" y2="12" stroke="rgba(253, 224, 71, 0.7)" stroke-width="1.5" />
+    <line x1="0" y1="-28" x2="34" y2="8" stroke="rgba(253, 224, 71, 0.7)" stroke-width="1.5" />
+    <line x1="-32" y1="12" x2="0" y2="34" stroke="rgba(253, 224, 71, 0.6)" stroke-width="1.2" />
+    <line x1="34" y1="8" x2="0" y2="34" stroke="rgba(253, 224, 71, 0.6)" stroke-width="1.2" />
+
+    <!-- Ribbon Laurel Banner -->
+    <rect x="-65" y="65" width="130" height="24" rx="6" fill="#070b19" stroke="url(#regalGold)" stroke-width="1.2" />
+    <text x="0" y="81" font-family="'Inter', -apple-system, sans-serif" font-size="10" font-weight="800" fill="#fde047" text-anchor="middle" letter-spacing="1.5">GLOBAL NETWORK</text>
+  </g>
+
+  <!-- Left Side: Poster Content & Typography -->
+  <!-- Top Badge / Pill -->
+  <g transform="translate(60, 60)">
+    <rect width="265" height="30" rx="15" fill="rgba(234, 179, 8, 0.15)" stroke="rgba(234, 179, 8, 0.5)" stroke-width="1" />
+    <circle cx="16" cy="15" r="4.5" fill="#fde047" filter="url(#goldGlow)" />
+    <text x="32" y="20" font-family="'Inter', -apple-system, sans-serif" font-size="11" font-weight="800" fill="#fde047" letter-spacing="2">EXECUTIVE LEADERSHIP SERIES</text>
+  </g>
+
+  <!-- Big Bold Title -->
+  <text x="60" y="145" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="900" fill="#ffffff" letter-spacing="-0.5">
+    ALUMNI CAREER &amp;
+  </text>
+  <text x="60" y="195" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="800" fill="url(#regalGold)" letter-spacing="0">
+    Leadership Summit
+  </text>
+
+  <!-- Tagline / Pitch -->
+  <text x="60" y="240" font-family="'Inter', -apple-system, sans-serif" font-size="15" font-weight="500" fill="#cbd5e1" letter-spacing="0.2">
+    Connect with industry leaders, founders &amp; global alumni executives.
+  </text>
+
+  <!-- Highlights Badges -->
+  <g transform="translate(60, 275)">
+    <!-- Badge 1: Keynotes -->
+    <rect x="0" y="0" width="140" height="34" rx="8" fill="rgba(10, 16, 38, 0.85)" stroke="rgba(253, 224, 71, 0.35)" stroke-width="1" />
+    <text x="70" y="22" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" fill="#fef08a" text-anchor="middle">🎙️ KEYNOTE PANELS</text>
+
+    <!-- Badge 2: 1-on-1 Mentorship -->
+    <rect x="152" y="0" width="150" height="34" rx="8" fill="rgba(10, 16, 38, 0.85)" stroke="rgba(192, 132, 252, 0.4)" stroke-width="1" />
+    <text x="227" y="22" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" fill="#f3e8ff" text-anchor="middle">🤝 1-ON-1 MENTORSHIP</text>
+
+    <!-- Badge 3: Networking Gala -->
+    <rect x="314" y="0" width="135" height="34" rx="8" fill="rgba(10, 16, 38, 0.85)" stroke="rgba(253, 224, 71, 0.35)" stroke-width="1" />
+    <text x="381" y="22" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" fill="#fef08a" text-anchor="middle">🥂 NETWORKING GALA</text>
+  </g>
+
+  <!-- Bottom Details Bar -->
+  <g transform="translate(60, 360)">
+    <line x1="0" y1="0" x2="680" y2="0" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1" />
+    <text x="0" y="32" font-family="'Inter', -apple-system, sans-serif" font-size="13" font-weight="700" fill="#fde047">
+      📍 CONVENTION CENTER AUDITORIUM &bull; EXECUTIVE SUITE
+    </text>
+    <text x="680" y="32" font-family="'Inter', -apple-system, sans-serif" font-size="13" font-weight="800" fill="#c084fc" text-anchor="end">
+      ALUMNI RELATIONS &bull; 2026
+    </text>
+  </g>
+</svg>

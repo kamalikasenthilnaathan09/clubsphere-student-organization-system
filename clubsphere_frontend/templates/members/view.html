@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block title %}{{ member.full_name }} — Member Details{% endblock %}
+{% block page_title %}{{ member.full_name }} ({{ member.member_code }}){% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('members_list') }}" class="btn btn-secondary btn-sm">&larr; Members List</a>
+{% if current_user.role in ['Administrator', 'Treasurer'] %}
+<a href="{{ url_for('members_edit', member_id=member.id) }}" class="btn btn-secondary btn-sm">Edit Details</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+  
+  <!-- Left Column: Member Card & Quick Status -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Profile Overview</h2>
+        {% if is_expired %}
+        <span class="badge badge-expired">Expired</span>
+        {% elif member.status == 'Active' %}
+        <span class="badge badge-active">Active Member</span>
+        {% else %}
+        <span class="badge badge-pending">{{ member.status }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+            {{ member.full_name[:1] }}
+          </div>
+          <h3 style="font-size: 1.15rem; font-weight: 700;">{{ member.full_name }}</h3>
+          <code>{{ member.member_code }}</code>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <div style="margin-bottom: 10px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); display: block;">Email</span>
+            <span style="font-weight: 500;">{{ member.email }}</span>
+          </div>
+          {% if member.phone %}
+          <div style="margin-bottom: 10px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); display: block;">Phone</span>
+            <span>{{ member.phone }}</span>
+          </div>
+          {% endif %}
+          {% if member.student_id %}
+          <div style="margin-bottom: 10px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); display: block;">Student ID & Dept</span>
+            <span>{{ member.student_id }} &bull; {{ member.department or 'N/A' }}</span>
+          </div>
+          {% endif %}
+          <div style="margin-bottom: 10px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); display: block;">Plan Type</span>
+            <span class="badge badge-neutral">{{ member.membership_type }}</span>
+          </div>
+          <div style="margin-bottom: 10px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); display: block;">Validity Period</span>
+            <span>{{ member.join_date | format_date }} &rarr; <strong>{{ member.expiry_date | format_date }}</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dues & Renewal Actions Card -->
+    {% if current_user.role in ['Administrator', 'Treasurer'] %}
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Membership Actions</h2>
+      </div>
+      <div class="card-body">
+        <!-- Record Payment against dues -->
+        {% if outstanding_dues > 0 %}
+        <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 18px;">
+          <div style="font-weight: 600; color: var(--danger); margin-bottom: 4px;">Outstanding Dues: {{ outstanding_dues | currency }}</div>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">Record incoming payment to clear member's balance.</p>
+          
+          <form action="{{ url_for('members_record_payment', member_id=member.id) }}" method="POST">
+            <div class="form-group" style="margin-bottom: 8px;">
+              <input type="number" step="0.01" min="0.01" max="{{ outstanding_dues }}" name="amount" class="form-control" value="{{ outstanding_dues }}" required placeholder="Amount (₹)">
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <select name="payment_method" class="form-select">
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <input type="text" name="reference_no" class="form-control" placeholder="Ref / Transaction ID">
+            </div>
+            <button type="submit" class="btn btn-sm btn-success btn-block">Record Dues Payment</button>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Renew Membership -->
+        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+          <div style="font-weight: 600; margin-bottom: 4px;">Extend / Renew Membership</div>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">Extend expiry date and record renewal fee.</p>
+
+          <form action="{{ url_for('members_renew', member_id=member.id) }}" method="POST">
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label class="form-label" style="font-size: 0.75rem;">New Expiry Date</label>
+              <input type="date" name="new_expiry_date" class="form-control" required min="{{ member.expiry_date }}">
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label class="form-label" style="font-size: 0.75rem;">Renewal Fee (₹)</label>
+              <input type="number" step="0.01" min="0" name="renewal_fee" class="form-control" value="500.00">
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label class="form-label" style="font-size: 0.75rem;">Amount Paid Now (₹)</label>
+              <input type="number" step="0.01" min="0" name="payment_amount" class="form-control" value="500.00">
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <select name="payment_method" class="form-select">
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary btn-block">Renew Membership</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Right Column: Payments History & Tickets -->
+  <div>
+    <!-- Financial Ledger for this Member -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Fee & Payment Records</h2>
+        <div style="font-size: 0.85rem;">
+          Fee: <strong>{{ member.membership_fee | currency }}</strong> &bull;
+          Paid: <strong style="color: var(--success);">{{ member.amount_paid | currency }}</strong> &bull;
+          Dues: <strong style="color: {% if outstanding_dues > 0 %}var(--danger){% else %}var(--text-secondary){% endif %};">{{ outstanding_dues | currency }}</strong>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if payments %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Mode</th>
+                <th>Reference</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in payments %}
+              <tr>
+                <td>{{ p.payment_date | format_date }}</td>
+                <td><strong style="color: var(--success);">{{ p.amount | currency }}</strong></td>
+                <td><span class="badge badge-neutral">{{ p.payment_method }}</span></td>
+                <td><code>{{ p.reference_no or '-' }}</code></td>
+                <td style="font-size: 0.8rem; color: var(--text-secondary);">{{ p.notes or '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-title">No payment records found</div>
+          <p class="empty-state-text">No membership fee payments have been logged yet for this member.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Event Tickets Purchased -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">🎟️ Registered Event Tickets</h2>
+      </div>
+      <div class="card-body p-0">
+        {% if tickets %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Ticket Ref</th>
+                <th>Event</th>
+                <th>Event Date</th>
+                <th>Price Paid</th>
+                <th>Rate Applied</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in tickets %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('ticket_badge', ticket_ref=t.ticket_ref) }}">
+                    <code>{{ t.ticket_ref }}</code>
+                  </a>
+                </td>
+                <td><strong>{{ t.event_title }}</strong></td>
+                <td>{{ t.event_date | format_date }}</td>
+                <td>{{ t.price_paid | currency }}</td>
+                <td>
+                  {% if t.is_member_rate %}
+                  <span class="badge badge-active">Member Rate</span>
+                  {% else %}
+                  <span class="badge badge-neutral">Standard Rate</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if t.checked_in %}
+                  <span class="badge badge-confirmed">Attended</span>
+                  {% else %}
+                  <span class="badge badge-upcoming">Confirmed</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-title">No tickets purchased</div>
+          <p class="empty-state-text">This member has not registered for any events yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

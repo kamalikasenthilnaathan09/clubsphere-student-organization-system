@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}Noticeboard & Announcements — ClubSphere{% endblock %}
+{% block page_title %}Club Noticeboard & Announcements{% endblock %}
+
+{% block top_actions %}
+{% if current_user.role in ['Administrator', 'Event Organizer'] %}
+<button class="btn btn-primary btn-sm" data-modal-target="new-announcement-modal">+ Post Announcement</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="announcements-page-container">
+  
+  <!-- Header Subtitle -->
+  <div class="announcements-header-bar">
+    <div>
+      <h2 class="announcements-header-title">Broadcast Feed</h2>
+      <p class="announcements-header-sub">
+        Official campus notices, event briefings, and operational alerts published to club members.
+      </p>
+    </div>
+  </div>
+
+  {% if announcements %}
+    <div class="announcements-feed-list">
+      {% for a in announcements %}
+      <article class="card announcement-post-card {% if a.priority == 'Urgent' %}announcement-urgent{% elif a.priority == 'Important' %}announcement-important{% endif %}">
+        <div class="announcement-card-top">
+          <div class="announcement-tags-group">
+            <span class="badge announcement-audience-badge">
+              {% if a.audience == 'All' %}
+                👥 All Club
+              {% elif a.audience == 'Members' %}
+                🎓 Members Only
+              {% elif a.audience == 'Volunteers' %}
+                🤝 Volunteers
+              {% elif a.audience == 'Executive' %}
+                🏛️ Executive
+              {% else %}
+                Audience: {{ a.audience }}
+              {% endif %}
+            </span>
+            {% if a.priority == 'Urgent' %}
+            <span class="badge badge-expired announcement-priority-badge">🚨 Urgent Alert</span>
+            {% elif a.priority == 'Important' %}
+            <span class="badge badge-pending announcement-priority-badge">⚠️ Important</span>
+            {% endif %}
+          </div>
+          <time class="announcement-timestamp">{{ a.created_at | format_date }}</time>
+        </div>
+
+        <div class="announcement-body-wrap">
+          <h3 class="announcement-post-title">{{ a.title }}</h3>
+          <div class="announcement-post-content">{{ a.content }}</div>
+        </div>
+        
+        <div class="announcement-post-footer">
+          <div class="announcement-author-info">
+            {% set author_parts = (a.publisher_name or 'Publisher').split() %}
+            <span class="announcement-author-avatar">{{ (author_parts[0][0] ~ (author_parts[1][0] if author_parts|length > 1 else '')) | upper }}</span>
+            <span class="announcement-author-name">Published by: <strong>{{ a.publisher_name }}</strong></span>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  {% else %}
+  <div class="card">
+    <div class="card-body">
+      <div class="empty-state" style="padding: 48px 24px;">
+        <div class="empty-state-icon">📢</div>
+        <div class="empty-state-title">No announcements on the noticeboard</div>
+        <p class="empty-state-text">Keep members informed about schedule updates, recruitments, and upcoming meetings.</p>
+        {% if current_user.role in ['Administrator', 'Event Organizer'] %}
+        <button class="btn btn-primary btn-sm" data-modal-target="new-announcement-modal">Publish First Announcement</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal: Post Announcement -->
+{% if current_user.role in ['Administrator', 'Event Organizer'] %}
+<div id="new-announcement-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+  <div class="announcement-modal-box">
+    <div class="announcement-modal-head">
+      <h3 class="announcement-modal-title">Broadcast Announcement</h3>
+      <button type="button" class="modal-close" style="background:none; border:none; font-size: 1.5rem; color: #64748b; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <form action="{{ url_for('announcements_new') }}" method="POST">
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label" for="ann_title" style="font-weight: 600; font-size: 0.85rem;">Announcement Title *</label>
+        <input type="text" id="ann_title" name="title" class="form-control" placeholder="e.g. Volunteer Orientation Briefing This Friday" required>
+      </div>
+
+      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+        <div class="form-group">
+          <label class="form-label" for="audience" style="font-weight: 600; font-size: 0.85rem;">Target Audience *</label>
+          <select id="audience" name="audience" class="form-select">
+            <option value="All">All Club Audience</option>
+            <option value="Members">Registered Members Only</option>
+            <option value="Volunteers">Volunteers & Crew</option>
+            <option value="Executive">Executive Committee</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="priority" style="font-weight: 600; font-size: 0.85rem;">Priority Level</label>
+          <select id="priority" name="priority" class="form-select">
+            <option value="Normal">Normal</option>
+            <option value="Important">Important</option>
+            <option value="Urgent">Urgent Alert</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label class="form-label" for="content" style="font-weight: 600; font-size: 0.85rem;">Announcement Message *</label>
+        <textarea id="content" name="content" class="form-control" rows="4" placeholder="Write message details..." required></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button type="submit" class="btn btn-primary btn-block" style="flex: 1;">Publish to Noticeboard</button>
+        <button type="button" data-modal-close class="btn btn-secondary" style="min-width: 90px;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

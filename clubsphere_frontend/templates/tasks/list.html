@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% block title %}Volunteer Tasks — ClubSphere{% endblock %}
+{% block page_title %}Volunteer Tasks Board{% endblock %}
+
+{% block top_actions %}
+{% if current_user.role in ['Administrator', 'Event Organizer'] %}
+<button class="btn btn-primary btn-sm" data-modal-target="new-task-modal">+ Create Task</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="tasks-page-container">
+
+  <!-- Header Subtitle -->
+  <div class="tasks-header-bar">
+    <p class="tasks-subtitle">
+      Coordinate volunteer responsibilities, monitor live execution, and track task completion.
+    </p>
+  </div>
+
+  <!-- Quick Filter Toolbar -->
+  <div class="filter-bar tasks-filter-toolbar">
+    <a href="{{ url_for('tasks_list') }}" class="btn btn-sm {% if not status_filter and not my_tasks %}btn-primary{% else %}btn-secondary{% endif %}">
+      All Tasks
+    </a>
+    <a href="{{ url_for('tasks_list', my_tasks='1') }}" class="btn btn-sm {% if my_tasks %}btn-primary{% else %}btn-secondary{% endif %}">
+      👤 Assigned to Me
+    </a>
+    <a href="{{ url_for('tasks_list', status='Pending') }}" class="btn btn-sm {% if status_filter == 'Pending' %}btn-primary{% else %}btn-secondary{% endif %}">
+      ⏳ Pending
+    </a>
+    <a href="{{ url_for('tasks_list', status='In Progress') }}" class="btn btn-sm {% if status_filter == 'In Progress' %}btn-primary{% else %}btn-secondary{% endif %}">
+      ⚡ In Progress
+    </a>
+    <a href="{{ url_for('tasks_list', status='Completed') }}" class="btn btn-sm {% if status_filter == 'Completed' %}btn-primary{% else %}btn-secondary{% endif %}">
+      ✓ Completed
+    </a>
+  </div>
+
+  <!-- Kanban Columns Grid -->
+  <div class="kanban-grid tasks-kanban-board">
+    
+    <!-- Column 1: Pending -->
+    <div class="kanban-col tasks-kanban-col col-pending">
+      <div class="kanban-col-header tasks-col-header">
+        <div class="tasks-col-title-wrap">
+          <span class="status-dot dot-pending" aria-hidden="true"></span>
+          <span class="kanban-col-title">Pending</span>
+        </div>
+        <span class="badge badge-neutral tasks-count-badge">{{ tasks | selectattr('status', 'equalto', 'Pending') | list | length }}</span>
+      </div>
+      
+      {% set pending_tasks = tasks | selectattr('status', 'equalto', 'Pending') | list %}
+      {% if pending_tasks %}
+        <div class="tasks-list-stack">
+          {% for t in pending_tasks %}
+          <div class="task-card priority-{{ t.priority }} task-card-modern">
+            <div class="task-card-header-row">
+              <span class="task-priority-pill priority-pill-{{ t.priority }}">{{ t.priority }}</span>
+              {% if t.event_title %}
+              <span class="task-event-tag" title="{{ t.event_title }}">📍 {{ t.event_title }}</span>
+              {% endif %}
+            </div>
+            
+            <h3 class="task-card-title">{{ t.title }}</h3>
+            
+            {% if t.description %}
+            <p class="task-card-desc">{{ t.description }}</p>
+            {% endif %}
+            
+            <div class="task-card-due-row">
+              <span class="task-due-label">Due:</span>
+              <strong class="task-due-val">{{ t.deadline | format_date }}</strong>
+            </div>
+
+            <div class="task-card-meta tasks-card-footer">
+              <div class="task-assignee-info">
+                {% set name_parts = (t.assignee_name or 'U').split() %}
+                <span class="task-avatar-mini">{{ (name_parts[0][0] ~ (name_parts[1][0] if name_parts|length > 1 else '')) | upper }}</span>
+                <span>Assignee: <strong>{{ t.assignee_name or 'Unassigned' }}</strong></span>
+              </div>
+            </div>
+
+            {% if current_user.role in ['Administrator', 'Event Organizer'] or t.assigned_to == current_user.id %}
+            <div class="task-card-actions">
+              <form action="{{ url_for('tasks_update_status', task_id=t.id) }}" method="POST" style="flex: 1;">
+                <input type="hidden" name="status" value="In Progress">
+                <button type="submit" class="btn btn-sm btn-secondary btn-block task-action-btn">Start &rarr;</button>
+              </form>
+              <form action="{{ url_for('tasks_update_status', task_id=t.id) }}" method="POST" style="flex: 1;">
+                <input type="hidden" name="status" value="Completed">
+                <button type="submit" class="btn btn-sm btn-success btn-block task-action-btn">Done ✓</button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+      <div class="tasks-col-empty">
+        <span style="font-size: 1.5rem; display: block; margin-bottom: 6px;">⏳</span>
+        No pending tasks.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Column 2: In Progress -->
+    <div class="kanban-col tasks-kanban-col col-inprog">
+      <div class="kanban-col-header tasks-col-header">
+        <div class="tasks-col-title-wrap">
+          <span class="status-dot dot-inprog" aria-hidden="true"></span>
+          <span class="kanban-col-title">In Progress</span>
+        </div>
+        <span class="badge badge-neutral tasks-count-badge">{{ tasks | selectattr('status', 'equalto', 'In Progress') | list | length }}</span>
+      </div>
+
+      {% set inprog_tasks = tasks | selectattr('status', 'equalto', 'In Progress') | list %}
+      {% if inprog_tasks %}
+        <div class="tasks-list-stack">
+          {% for t in inprog_tasks %}
+          <div class="task-card priority-{{ t.priority }} task-card-modern">
+            <div class="task-card-header-row">
+              <span class="task-priority-pill priority-pill-{{ t.priority }}">{{ t.priority }}</span>
+              {% if t.event_title %}
+              <span class="task-event-tag" title="{{ t.event_title }}">📍 {{ t.event_title }}</span>
+              {% endif %}
+            </div>
+            
+            <h3 class="task-card-title">{{ t.title }}</h3>
+            
+            {% if t.description %}
+            <p class="task-card-desc">{{ t.description }}</p>
+            {% endif %}
+            
+            <div class="task-card-due-row">
+              <span class="task-due-label">Due:</span>
+              <strong class="task-due-val">{{ t.deadline | format_date }}</strong>
+            </div>
+
+            <div class="task-card-meta tasks-card-footer">
+              <div class="task-assignee-info">
+                {% set name_parts = (t.assignee_name or 'U').split() %}
+                <span class="task-avatar-mini">{{ (name_parts[0][0] ~ (name_parts[1][0] if name_parts|length > 1 else '')) | upper }}</span>
+                <span>Assignee: <strong>{{ t.assignee_name or 'Unassigned' }}</strong></span>
+              </div>
+            </div>
+
+            {% if current_user.role in ['Administrator', 'Event Organizer'] or t.assigned_to == current_user.id %}
+            <div class="task-card-actions">
+              <form action="{{ url_for('tasks_update_status', task_id=t.id) }}" method="POST" style="width: 100%;">
+                <input type="hidden" name="status" value="Completed">
+                <button type="submit" class="btn btn-sm btn-success btn-block task-action-btn">Mark Completed ✓</button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+      <div class="tasks-col-empty">
+        <span style="font-size: 1.5rem; display: block; margin-bottom: 6px;">⚡</span>
+        No tasks in progress.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Column 3: Completed -->
+    <div class="kanban-col tasks-kanban-col col-completed">
+      <div class="kanban-col-header tasks-col-header">
+        <div class="tasks-col-title-wrap">
+          <span class="status-dot dot-completed" aria-hidden="true"></span>
+          <span class="kanban-col-title">Completed</span>
+        </div>
+        <span class="badge badge-neutral tasks-count-badge">{{ tasks | selectattr('status', 'equalto', 'Completed') | list | length }}</span>
+      </div>
+
+      {% set comp_tasks = tasks | selectattr('status', 'equalto', 'Completed') | list %}
+      {% if comp_tasks %}
+        <div class="tasks-list-stack">
+          {% for t in comp_tasks %}
+          <div class="task-card priority-Low task-card-modern task-completed-card">
+            <div class="task-card-header-row">
+              <span class="badge badge-confirmed" style="font-size: 0.7rem; font-weight: 600;">✓ Completed</span>
+              {% if t.event_title %}
+              <span class="task-event-tag" title="{{ t.event_title }}">📍 {{ t.event_title }}</span>
+              {% endif %}
+            </div>
+
+            <h3 class="task-card-title task-title-completed">{{ t.title }}</h3>
+            
+            {% if t.description %}
+            <p class="task-card-desc" style="opacity: 0.8;">{{ t.description }}</p>
+            {% endif %}
+
+            <div class="task-card-meta tasks-card-footer">
+              <div class="task-assignee-info">
+                {% set name_parts = (t.assignee_name or 'V').split() %}
+                <span class="task-avatar-mini" style="background: #10b981;">{{ (name_parts[0][0] ~ (name_parts[1][0] if name_parts|length > 1 else '')) | upper }}</span>
+                <span>Done by: <strong>{{ t.assignee_name or 'Volunteer' }}</strong></span>
+              </div>
+            </div>
+
+            {% if current_user.role in ['Administrator', 'Event Organizer'] or t.assigned_to == current_user.id %}
+            <div class="task-card-actions">
+              <form action="{{ url_for('tasks_update_status', task_id=t.id) }}" method="POST" style="width: 100%;">
+                <input type="hidden" name="status" value="In Progress">
+                <button type="submit" class="btn btn-sm btn-outline btn-block task-action-btn" style="font-size: 0.78rem;">Reopen Task ↺</button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+      <div class="tasks-col-empty">
+        <span style="font-size: 1.5rem; display: block; margin-bottom: 6px;">✓</span>
+        No completed tasks yet.
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Modal: Create Task -->
+  <div id="new-task-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="tasks-modal-box">
+      <div class="tasks-modal-head">
+        <h3 class="tasks-modal-title">Create Volunteer Task</h3>
+        <button type="button" class="modal-close" style="background:none; border:none; font-size: 1.5rem; color: #64748b; cursor:pointer;" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <form action="{{ url_for('tasks_new') }}" method="POST">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label" for="task_title" style="font-weight: 600; font-size: 0.85rem;">Task Title *</label>
+          <input type="text" id="task_title" name="title" class="form-control" placeholder="e.g. Stage Audio Setup / Badge Distribution" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label" for="task_desc" style="font-weight: 600; font-size: 0.85rem;">Task Description</label>
+          <textarea id="task_desc" name="description" class="form-control" rows="2" placeholder="Details and instructions for the volunteer..."></textarea>
+        </div>
+
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="assigned_to" style="font-weight: 600; font-size: 0.85rem;">Assignee</label>
+            <select id="assigned_to" name="assigned_to" class="form-select">
+              <option value="">Unassigned</option>
+              {% for u in volunteers %}
+              <option value="{{ u.id }}">{{ u.full_name }} ({{ u.role }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="priority" style="font-weight: 600; font-size: 0.85rem;">Priority</label>
+            <select id="priority" name="priority" class="form-select">
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label class="form-label" for="event_id" style="font-weight: 600; font-size: 0.85rem;">Associated Event</label>
+            <select id="event_id" name="event_id" class="form-select">
+              <option value="">General Club Task</option>
+              {% for ev in events %}
+              <option value="{{ ev.id }}">{{ ev.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="deadline" style="font-weight: 600; font-size: 0.85rem;">Target Deadline</label>
+            <input type="date" id="deadline" name="deadline" class="form-control" value="{{ today_str }}">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button type="submit" class="btn btn-primary btn-block" style="flex: 1;">Create Task</button>
+          <button type="button" data-modal-close class="btn btn-secondary" style="min-width: 90px;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

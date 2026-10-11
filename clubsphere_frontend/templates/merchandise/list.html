@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% block title %}Merchandise & Inventory — ClubSphere{% endblock %}
+{% block page_title %}Club Merchandise & Inventory{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('merchandise_order') }}" class="btn btn-primary btn-sm">🛒 Record Customer Order</a>
+{% if current_user.role in ['Administrator', 'Treasurer'] %}
+<a href="{{ url_for('merchandise_new') }}" class="btn btn-secondary btn-sm">+ Add Product</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="merch-page-container">
+
+  <!-- 1. Page Header -->
+  <div class="page-header merch-page-header">
+    <div>
+      <div class="merch-title-row">
+        <h1 class="page-title merch-main-title">Club Merchandise & Inventory</h1>
+        {% if is_demo_mode %}
+        <span class="badge badge-warning merch-demo-badge">DEMO ENVIRONMENT</span>
+        {% endif %}
+      </div>
+      <p class="page-subtitle merch-subtitle">Campus store merchandise, size inventory tracking & customer order fulfillment</p>
+    </div>
+    <div class="merch-header-actions">
+      <a href="{{ url_for('merchandise_order') }}" class="btn btn-primary">
+        <span>🛒</span> Record Customer Order
+      </a>
+      {% if current_user.role in ['Administrator', 'Treasurer'] %}
+      <a href="{{ url_for('merchandise_new') }}" class="btn btn-secondary">
+        <span>+</span> Add Product
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 2. Live Inventory KPI Overview -->
+  <div class="merch-kpi-grid">
+    <div class="stat-card merch-kpi-card">
+      <div class="merch-kpi-header">
+        <span class="merch-kpi-label">Catalog Products</span>
+        <div class="merch-kpi-icon icon-blue">📦</div>
+      </div>
+      <div class="merch-kpi-val">{{ items | length }}</div>
+      <div class="merch-kpi-meta">Active campus items</div>
+    </div>
+
+    <div class="stat-card merch-kpi-card">
+      <div class="merch-kpi-header">
+        <span class="merch-kpi-label">Stock Units on Hand</span>
+        <div class="merch-kpi-icon icon-green">👕</div>
+      </div>
+      <div class="merch-kpi-val text-green">{{ total_units_in_stock }}</div>
+      <div class="merch-kpi-meta">Across all size variants</div>
+    </div>
+
+    <div class="stat-card merch-kpi-card">
+      <div class="merch-kpi-header">
+        <span class="merch-kpi-label">Low Stock Alerts</span>
+        <div class="merch-kpi-icon icon-amber">⚠️</div>
+      </div>
+      <div class="merch-kpi-val {% if low_stock_variants_count > 0 %}text-amber{% else %}text-muted{% endif %}">
+        {{ low_stock_variants_count }}
+      </div>
+      <div class="merch-kpi-meta">Variants needing restock</div>
+    </div>
+
+    <div class="stat-card merch-kpi-card">
+      <div class="merch-kpi-header">
+        <span class="merch-kpi-label">Recorded Sales</span>
+        <div class="merch-kpi-icon icon-purple">💰</div>
+      </div>
+      <div class="merch-kpi-val text-navy">{{ total_merch_revenue | currency }}</div>
+      <div class="merch-kpi-meta">Fulfilled store revenue</div>
+    </div>
+  </div>
+
+  <!-- 3. Featured Campus Merchandise Product Cards -->
+  <div class="merch-section">
+    <div class="merch-section-header">
+      <div>
+        <h2 class="merch-section-title">Featured Campus Merchandise</h2>
+        <p class="merch-section-subtitle">Official organization apparel and student branded accessories</p>
+      </div>
+      <a href="{{ url_for('merchandise_order') }}" class="btn btn-sm btn-outline-primary">
+        <span>🛒</span> Place New Order
+      </a>
+    </div>
+
+    {% if items %}
+    <div class="merch-product-grid">
+      {% for item in items %}
+      <div class="merch-product-card">
+        <!-- Card Image Container -->
+        <div class="merch-card-image-wrap">
+          <span class="merch-badge-category">{{ item.category }}</span>
+          <span class="badge {{ item.stock_status_badge }} merch-badge-stock">{{ item.stock_status }}</span>
+
+          {% if 'hoodie' in item.name|lower %}
+            <img 
+              src="{{ url_for('static', filename='images/pic 01.jpg') }}" 
+              alt="{{ item.name }}" 
+              class="merch-card-img" 
+              loading="lazy">
+          {% elif 'pin' in item.name|lower or 'decal' in item.name|lower or 'pack' in item.name|lower %}
+            <img 
+              src="{{ url_for('static', filename='images/pic 02.jpg') }}" 
+              alt="{{ item.name }}" 
+              class="merch-card-img" 
+              loading="lazy">
+          {% else %}
+            <div class="merch-card-placeholder">
+              <span class="merch-placeholder-icon">👕</span>
+              <span class="merch-placeholder-text">{{ item.name }}</span>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Card Body -->
+        <div class="merch-card-body">
+          <div class="merch-card-header-row">
+            <div>
+              <h3 class="merch-card-title">{{ item.name }}</h3>
+              <p class="merch-card-desc">{{ item.description or 'Official student organization merchandise product.' }}</p>
+            </div>
+            <div class="merch-card-price-badge">
+              {% if item.base_price and item.base_price > 0 %}
+                {{ item.base_price | currency }}
+              {% else %}
+                <span class="text-danger" style="font-size: 0.85rem;">Price Not Set</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Size Variants & Stock Specs -->
+          <div class="merch-card-variants-section">
+            <div class="merch-variants-header">
+              <span class="merch-variants-title">Available Sizes &amp; Stock:</span>
+              <span class="merch-variants-total">{{ item.total_stock }} units total</span>
+            </div>
+
+            {% if item.variants %}
+            <div class="merch-sizes-chips-row">
+              {% for v in item.variants %}
+              <div class="merch-size-chip {% if v.stock_quantity == 0 %}chip-out{% elif v.stock_quantity <= v.low_stock_threshold %}chip-low{% else %}chip-in{% endif %}" title="{{ v.sku }} &bull; {{ v.stock_quantity }} units">
+                <span class="chip-size-name">{{ v.size }}</span>
+                <span class="chip-sku-code">{{ v.sku }}</span>
+                <span class="chip-stock-num">
+                  {% if v.stock_quantity == 0 %}
+                    Out
+                  {% else %}
+                    {{ v.stock_quantity }}
+                  {% endif %}
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="merch-no-variants-note">No size variants configured yet.</div>
+            {% endif %}
+          </div>
+
+          <!-- Card Actions -->
+          <div class="merch-card-footer">
+            <a href="{{ url_for('merchandise_order') }}" class="btn btn-primary merch-order-btn">
+              <span>🛒</span> Record Order
+            </a>
+            <a href="#inventory-table" class="btn btn-secondary merch-view-btn">
+              View Inventory
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card p-4 text-center">
+      <div class="empty-state">
+        <div class="empty-state-icon">👕</div>
+        <div class="empty-state-title">No merchandise products configured</div>
+        <p class="empty-state-text">Add your campus hoodie, pins, and accessories to start tracking inventory and revenue.</p>
+        {% if current_user.role in ['Administrator', 'Treasurer'] %}
+        <a href="{{ url_for('merchandise_new') }}" class="btn btn-primary btn-sm">+ Add First Product</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 4. Stock Levels & Size Variants Table -->
+  <div class="card merch-table-card" id="inventory-table">
+    <div class="card-header merch-table-header">
+      <div>
+        <h2 class="card-title">Stock Levels &amp; Size Variants</h2>
+        <span class="merch-table-subtitle">Complete breakdown of SKUs, low-stock thresholds and replenishment</span>
+      </div>
+      <span class="badge badge-neutral merch-variant-count-badge">{{ variants | length }} Variants</span>
+    </div>
+    <div class="card-body p-0">
+      {% if variants %}
+      <div class="table-responsive">
+        <table class="table merch-inventory-table">
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th style="width: 100px;">Size</th>
+              <th style="width: 130px;">SKU</th>
+              <th style="width: 120px;">Unit Price</th>
+              <th style="width: 150px;">Stock Quantity</th>
+              <th style="width: 150px;">Stock Status</th>
+              {% if current_user.role in ['Administrator', 'Treasurer'] %}
+              <th style="width: 180px;">Restock Action</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in variants %}
+            <tr class="{% if v.stock_quantity == 0 %}row-out-of-stock{% elif v.stock_quantity <= v.low_stock_threshold %}row-low-stock{% endif %}">
+              <td>
+                <strong class="merch-item-name">{{ v.item_name }}</strong>
+              </td>
+              <td>
+                <span class="badge badge-neutral merch-size-pill">{{ v.size }}</span>
+              </td>
+              <td>
+                <code class="merch-sku-badge">{{ v.sku }}</code>
+              </td>
+              <td class="merch-price-cell">
+                {{ (v.price_override or v.base_price) | currency }}
+              </td>
+              <td>
+                <strong class="merch-qty-num {% if v.stock_quantity == 0 %}text-danger{% elif v.stock_quantity <= v.low_stock_threshold %}text-warning{% else %}text-dark{% endif %}">
+                  {{ v.stock_quantity }}
+                </strong>
+                <span class="merch-qty-unit">units</span>
+              </td>
+              <td>
+                {% if v.stock_quantity == 0 %}
+                <span class="badge badge-expired">Out of Stock</span>
+                {% elif v.stock_quantity <= v.low_stock_threshold %}
+                <span class="badge badge-pending">Low Stock (&le; {{ v.low_stock_threshold }})</span>
+                {% else %}
+                <span class="badge badge-active">In Stock</span>
+                {% endif %}
+              </td>
+              {% if current_user.role in ['Administrator', 'Treasurer'] %}
+              <td>
+                <form action="{{ url_for('merchandise_restock', variant_id=v.id) }}" method="POST" class="merch-restock-form">
+                  <input 
+                    type="number" 
+                    min="1" 
+                    name="quantity" 
+                    class="form-control form-control-sm merch-restock-input" 
+                    placeholder="+Qty" 
+                    required>
+                  <button type="submit" class="btn btn-sm btn-secondary merch-restock-btn">
+                    Restock
+                  </button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">👕</div>
+        <div class="empty-state-title">No merchandise products found</div>
+        <p class="empty-state-text">Add club t-shirts, hoodies, or stickers to track inventory and revenue.</p>
+        {% if current_user.role in ['Administrator', 'Treasurer'] %}
+        <a href="{{ url_for('merchandise_new') }}" class="btn btn-primary btn-sm">+ Add First Product</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 5. Recent Merchandise Orders Table -->
+  <div class="card merch-table-card">
+    <div class="card-header merch-table-header">
+      <div>
+        <h2 class="card-title">Recent Merchandise Orders</h2>
+        <span class="merch-table-subtitle">Audited customer purchases and payments</span>
+      </div>
+      <a href="{{ url_for('merchandise_order') }}" class="btn btn-sm btn-primary">
+        <span>+</span> New Order
+      </a>
+    </div>
+    <div class="card-body p-0">
+      {% if orders %}
+      <div class="table-responsive">
+        <table class="table merch-orders-table">
+          <thead>
+            <tr>
+              <th style="width: 170px;">Order Ref</th>
+              <th>Customer Information</th>
+              <th style="width: 140px;">Total Amount</th>
+              <th style="width: 130px;">Payment Status</th>
+              <th style="width: 130px;">Payment Mode</th>
+              <th style="width: 140px;">Order Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td><code class="merch-order-ref">{{ o.order_ref }}</code></td>
+              <td>
+                <div class="merch-customer-name">{{ o.customer_name }}</div>
+                <div class="merch-customer-email">{{ o.customer_email }}</div>
+              </td>
+              <td>
+                <strong class="merch-order-amount">{{ o.total_amount | currency }}</strong>
+              </td>
+              <td>
+                {% if o.payment_status == 'Paid' %}
+                <span class="badge badge-confirmed">Paid</span>
+                {% elif o.payment_status == 'Pending' %}
+                <span class="badge badge-pending">Pending</span>
+                {% else %}
+                <span class="badge badge-rejected">{{ o.payment_status }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge badge-neutral">{{ o.payment_method }}</span>
+              </td>
+              <td class="merch-order-date">
+                {{ o.created_at | format_date }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding: 32px 16px;">
+        <div class="empty-state-title">No customer orders yet</div>
+        <p class="empty-state-text">Orders recorded here deduct stock atomically and post revenue to the ledger.</p>
+        <a href="{{ url_for('merchandise_order') }}" class="btn btn-sm btn-primary mt-2">Place First Order</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

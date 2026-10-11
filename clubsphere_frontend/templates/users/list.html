@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% block title %}System Users & Roles — ClubSphere{% endblock %}
+{% block page_title %}System Users & Roles{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('users_new') }}" class="btn btn-primary btn-sm" id="btn-create-user">
+  <span style="font-size: 1rem; line-height: 1; margin-right: 4px;">+</span> Create User Account
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="users-page-container">
+
+  <!-- Subtitle Header Bar -->
+  <div class="users-header-sub">
+    <p class="page-subtitle" style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+      Manage user accounts, access roles, and account status.
+    </p>
+  </div>
+
+  <!-- Summary Metrics Calculation -->
+  {% set total_count = users | length %}
+  {% set stats = namespace(active=0, admin=0, member=0) %}
+  {% for u in users %}
+    {% if u.is_active %}{% set stats.active = stats.active + 1 %}{% endif %}
+    {% if u.role == 'Administrator' %}{% set stats.admin = stats.admin + 1 %}{% endif %}
+    {% if u.role == 'Member' %}{% set stats.member = stats.member + 1 %}{% endif %}
+  {% endfor %}
+
+  <!-- 1. Compact Summary Cards -->
+  <div class="users-kpis-grid">
+    <!-- Total Users -->
+    <div class="users-kpi-card">
+      <div class="users-kpi-head">
+        <span class="users-kpi-title">Total Users</span>
+        <div class="users-kpi-icon icon-blue">👥</div>
+      </div>
+      <div class="users-kpi-value">{{ total_count }}</div>
+      <div class="users-kpi-sub">Registered directory records</div>
+    </div>
+
+    <!-- Active Accounts -->
+    <div class="users-kpi-card">
+      <div class="users-kpi-head">
+        <span class="users-kpi-title">Active Accounts</span>
+        <div class="users-kpi-icon icon-green">✅</div>
+      </div>
+      <div class="users-kpi-value" style="color: var(--success);">{{ stats.active }}</div>
+      <div class="users-kpi-sub">Enabled and operational</div>
+    </div>
+
+    <!-- Administrators -->
+    <div class="users-kpi-card">
+      <div class="users-kpi-head">
+        <span class="users-kpi-title">Administrators</span>
+        <div class="users-kpi-icon icon-sky">🛡️</div>
+      </div>
+      <div class="users-kpi-value">{{ stats.admin }}</div>
+      <div class="users-kpi-sub">Full governance permissions</div>
+    </div>
+
+    <!-- Members -->
+    <div class="users-kpi-card">
+      <div class="users-kpi-head">
+        <span class="users-kpi-title">Members</span>
+        <div class="users-kpi-icon icon-amber">🎓</div>
+      </div>
+      <div class="users-kpi-value">{{ stats.member }}</div>
+      <div class="users-kpi-sub">General organization accounts</div>
+    </div>
+  </div>
+
+  <!-- 2. Main User Directory Card -->
+  <div class="users-directory-card">
+    <!-- Card Header -->
+    <div class="users-card-header">
+      <div class="users-card-header-left">
+        <h2 class="users-card-title">User Accounts Directory</h2>
+        <span class="users-count-pill" id="users-total-badge">{{ total_count }} Total Accounts</span>
+      </div>
+      <div class="users-filter-counter">
+        Showing <strong id="users-visible-count">{{ total_count }}</strong> of {{ total_count }} accounts
+      </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="users-filter-bar">
+      <div class="users-filter-group">
+        <!-- Search Input -->
+        <div class="users-search-box">
+          <svg class="users-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="users-search-input" class="users-search-input" placeholder="Search by name, username, or email..." autocomplete="off">
+        </div>
+
+        <!-- Role Filter Dropdown -->
+        <select id="users-role-filter" class="users-filter-select" aria-label="Filter by role">
+          <option value="all">All Roles</option>
+          <option value="Administrator">Administrator</option>
+          <option value="Treasurer">Treasurer</option>
+          <option value="Event Organizer">Event Organizer</option>
+          <option value="Volunteer">Volunteer</option>
+          <option value="Member">Member</option>
+        </select>
+
+        <!-- Status Filter Dropdown -->
+        <select id="users-status-filter" class="users-filter-select" aria-label="Filter by account status">
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+
+        <!-- Clear Filters Button -->
+        <button type="button" id="users-clear-filters" class="users-clear-btn" style="display: none;">
+          ✕ Clear Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-responsive">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th style="min-width: 220px;">User</th>
+            <th style="min-width: 200px;">Email</th>
+            <th style="min-width: 140px;">Role</th>
+            <th style="min-width: 120px;">Account Status</th>
+            <th style="min-width: 130px;">Created On</th>
+            <th style="min-width: 130px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          {% set name_parts = (u.full_name or '').strip().split() %}
+          {% if name_parts | length >= 2 %}
+            {% set initials = (name_parts[0][0] ~ name_parts[-1][0]) | upper %}
+          {% elif name_parts | length == 1 and name_parts[0] %}
+            {% set initials = name_parts[0][:2] | upper %}
+          {% elif u.username %}
+            {% set initials = u.username[:2] | upper %}
+          {% else %}
+            {% set initials = 'U' %}
+          {% endif %}
+
+          {% if u.role == 'Administrator' %}
+            {% set avatar_class = 'user-avatar-admin' %}
+            {% set role_badge_class = 'badge-role-admin' %}
+          {% elif u.role == 'Treasurer' %}
+            {% set avatar_class = 'user-avatar-treasurer' %}
+            {% set role_badge_class = 'badge-role-treasurer' %}
+          {% elif u.role == 'Event Organizer' %}
+            {% set avatar_class = 'user-avatar-organizer' %}
+            {% set role_badge_class = 'badge-role-organizer' %}
+          {% elif u.role == 'Volunteer' %}
+            {% set avatar_class = 'user-avatar-volunteer' %}
+            {% set role_badge_class = 'badge-role-volunteer' %}
+          {% else %}
+            {% set avatar_class = 'user-avatar-member' %}
+            {% set role_badge_class = 'badge-role-member' %}
+          {% endif %}
+
+          <tr class="user-row {% if u.id == current_user.id %}row-current-user{% endif %}"
+              data-name="{{ (u.full_name or '') | lower }}"
+              data-username="{{ (u.username or '') | lower }}"
+              data-email="{{ (u.email or '') | lower }}"
+              data-role="{{ u.role }}"
+              data-status="{% if u.is_active %}active{% else %}inactive{% endif %}">
+            <!-- 1. User (Full Name, Username, Avatar) -->
+            <td>
+              <div class="user-identity-cell">
+                <div class="user-avatar {{ avatar_class }}" aria-hidden="true">{{ initials }}</div>
+                <div class="user-meta-info">
+                  <div class="user-full-name" title="{{ u.full_name }}">{{ u.full_name }}</div>
+                  <div class="user-username">@{{ u.username }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- 2. Email -->
+            <td>
+              <div class="user-email-cell">
+                <a href="mailto:{{ u.email }}" class="user-email-link" title="{{ u.email }}">{{ u.email }}</a>
+              </div>
+            </td>
+
+            <!-- 3. Role -->
+            <td>
+              <span class="badge-role {{ role_badge_class }}">{{ u.role }}</span>
+            </td>
+
+            <!-- 4. Account Status -->
+            <td>
+              {% if u.is_active %}
+              <span class="badge-status badge-status-active">
+                <span class="badge-status-dot"></span>Active
+              </span>
+              {% else %}
+              <span class="badge-status badge-status-inactive">
+                <span class="badge-status-dot"></span>Inactive
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- 5. Created On -->
+            <td>
+              <span class="user-date-cell">{{ u.created_at | format_date }}</span>
+            </td>
+
+            <!-- 6. Actions -->
+            <td class="user-actions-cell" style="text-align: right;">
+              {% if u.id != current_user.id %}
+              <form action="{{ url_for('users_toggle', user_id=u.id) }}" method="POST" class="user-status-form" style="display:inline;" onsubmit="return confirm('Change status for user @{{ u.username }}?');">
+                <button type="submit" class="btn-user-action {% if u.is_active %}btn-user-deactivate{% else %}btn-user-activate{% endif %}">
+                  {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+              </form>
+              {% else %}
+              <span class="badge-current-session" title="Active signed-in account session">
+                <span class="current-session-pulse"></span>Current Session
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+
+          <!-- Empty search state row -->
+          <tr id="users-empty-row" style="display: none;">
+            <td colspan="6" class="users-empty-state">
+              <div class="users-empty-icon">🔍</div>
+              <div class="users-empty-title">No user accounts found</div>
+              <div class="users-empty-text">No accounts match your search or filter criteria.</div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="clearUsersFilters()">Clear Filters</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Client-Side Instant Filtering Script -->
+<script>
+  (function() {
+    const searchInput = document.getElementById('users-search-input');
+    const roleFilter = document.getElementById('users-role-filter');
+    const statusFilter = document.getElementById('users-status-filter');
+    const clearBtn = document.getElementById('users-clear-filters');
+    const visibleCountEl = document.getElementById('users-visible-count');
+    const emptyRow = document.getElementById('users-empty-row');
+    const rows = Array.from(document.querySelectorAll('.users-table tbody tr.user-row'));
+
+    function applyFilters() {
+      const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+      const roleVal = roleFilter ? roleFilter.value : 'all';
+      const statusVal = statusFilter ? statusFilter.value : 'all';
+
+      let visible = 0;
+      const isFiltered = query.length > 0 || roleVal !== 'all' || statusVal !== 'all';
+
+      if (clearBtn) {
+        clearBtn.style.display = isFiltered ? 'inline-flex' : 'none';
+      }
+
+      rows.forEach(function(row) {
+        const name = row.getAttribute('data-name') || '';
+        const username = row.getAttribute('data-username') || '';
+        const email = row.getAttribute('data-email') || '';
+        const role = row.getAttribute('data-role') || '';
+        const status = row.getAttribute('data-status') || '';
+
+        const matchesQuery = !query || name.includes(query) || username.includes(query) || email.includes(query);
+        const matchesRole = roleVal === 'all' || role === roleVal;
+        const matchesStatus = statusVal === 'all' || status === statusVal;
+
+        if (matchesQuery && matchesRole && matchesStatus) {
+          row.style.display = '';
+          visible++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      if (visibleCountEl) {
+        visibleCountEl.textContent = visible;
+      }
+
+      if (emptyRow) {
+        emptyRow.style.display = visible === 0 ? '' : 'none';
+      }
+    }
+
+    window.clearUsersFilters = function() {
+      if (searchInput) searchInput.value = '';
+      if (roleFilter) roleFilter.value = 'all';
+      if (statusFilter) statusFilter.value = 'all';
+      applyFilters();
+      if (searchInput) searchInput.focus();
+    };
+
+    if (searchInput) {
+      searchInput.addEventListener('input', applyFilters);
+    }
+    if (roleFilter) {
+      roleFilter.addEventListener('change', applyFilters);
+    }
+    if (statusFilter) {
+      statusFilter.addEventListener('change', applyFilters);
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener('click', window.clearUsersFilters);
+    }
+  })();
+</script>
+{% endblock %}

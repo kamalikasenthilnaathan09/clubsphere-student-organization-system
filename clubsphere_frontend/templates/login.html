@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — ClubSphere</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="login-page-wrapper">
+    <div class="login-split-card">
+
+      <!-- LEFT PANEL: Brand, Welcome & Login Form -->
+      <div class="login-left-panel">
+        <div>
+          <!-- Brand Header -->
+          <div class="login-brand-header">
+            <div class="login-brand-wrap">
+              <img src="{{ url_for('static', filename='images/odoo logo.jpg') }}" alt="ClubSphere Logo" class="login-brand-logo">
+              <div class="login-brand-text">
+                <div class="login-brand-title">ClubSphere</div>
+                <div class="login-brand-tagline">Where Campus Communities Thrive</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dual Login Segmented Tabs -->
+          <div class="login-type-tabs" role="tablist" aria-label="Login Options">
+            <button type="button" 
+                    id="tab-admin" 
+                    class="login-type-tab {% if login_type != 'user' %}active{% endif %}" 
+                    role="tab" 
+                    aria-selected="{% if login_type != 'user' %}true{% else %}false{% endif %}"
+                    aria-controls="login-form"
+                    data-login-type="admin">
+              <svg class="login-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              <span>Admin Login</span>
+            </button>
+            <button type="button" 
+                    id="tab-user" 
+                    class="login-type-tab {% if login_type == 'user' %}active{% endif %}" 
+                    role="tab" 
+                    aria-selected="{% if login_type == 'user' %}true{% else %}false{% endif %}"
+                    aria-controls="login-form"
+                    data-login-type="user">
+              <svg class="login-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span>User Login</span>
+            </button>
+          </div>
+
+          <!-- Welcome Heading & Description (Dynamic) -->
+          <h1 id="login-welcome-title" class="login-welcome-title">
+            {% if login_type == 'user' %}User Portal{% else %}Administrator Portal{% endif %}
+          </h1>
+          <p id="login-welcome-desc" class="login-welcome-desc">
+            {% if login_type == 'user' %}
+              Sign in to access your student clubs, events, merchandise, tasks, and announcements.
+            {% else %}
+              Sign in with administrative privileges to manage club operations, finances, and users.
+            {% endif %}
+          </p>
+
+          <!-- Flash Messages -->
+          <div class="flash-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button type="button" class="alert-close" aria-label="Close">&times;</button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+          </div>
+
+          <!-- Login Form -->
+          <form action="{{ url_for('login', next=request.args.get('next')) }}" method="POST" class="login-form" id="login-form">
+            <input type="hidden" name="login_type" id="login_type" value="{{ login_type or 'admin' }}">
+            <div class="login-form-group">
+              <label class="login-field-label" id="login-id-label" for="login_id">
+                {% if login_type == 'user' %}Username or Email{% else %}Admin Username or Email{% endif %}
+              </label>
+              <div class="login-input-wrap">
+                <div class="login-input-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <input type="text" id="login_id" name="login_id" class="form-control" placeholder="{% if login_type == 'user' %}Enter username or email{% else %}Enter admin username or email{% endif %}" value="{{ login_id or '' }}" required autofocus autocomplete="username">
+              </div>
+            </div>
+
+            <div class="login-form-group">
+              <label class="login-field-label" for="password">Password</label>
+              <div class="login-input-wrap">
+                <div class="login-input-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+                <button type="button" id="toggle-password" class="login-pwd-toggle" aria-label="Show password" title="Toggle password visibility">
+                  <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <svg class="icon-eye-slash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-login-submit" class="btn-login-submit">
+              <span style="font-size: 1.1rem; line-height: 1;">&rarr;</span> 
+              <span id="btn-login-text">{% if login_type == 'user' %}Sign In as User{% else %}Sign In as Admin{% endif %}</span>
+            </button>
+          </form>
+
+          <!-- Member Registration Prompt for User Portal -->
+          <div id="login-register-prompt" style="margin-top: 14px; text-align: center; font-size: 0.85rem; color: #94a3b8; {% if login_type != 'user' %}display: none;{% endif %}">
+            New to ClubSphere? <a href="{{ url_for('register') }}" style="color: #c084fc; text-decoration: none; font-weight: 600;">Create Member Account</a>
+          </div>
+        </div>
+
+        <!-- Left Panel Footer -->
+        <div class="login-footer-strip">
+          <span class="login-footer-line"></span>
+          <span>Campus communities, connected.</span>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: Purple Background & Collaboration Illustration -->
+      <div class="login-right-panel">
+        <div class="login-right-header">
+          <div class="login-right-title-sub">Welcome to</div>
+          <div class="login-right-title-main">ClubSphere</div>
+          <p class="login-right-tagline">Your campus. Your clubs. Your community.</p>
+        </div>
+
+        <div class="login-illustration-container">
+          <svg class="login-illustration-svg" viewBox="0 0 520 400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Student community collaboration illustration">
+            <!-- Decorative background curves -->
+            <path d="M-20 320 C80 260 140 380 260 300 C340 240 420 340 540 280 L540 420 L-20 420 Z" fill="rgba(88, 28, 135, 0.4)" />
+            <path d="M30 400 C120 300 280 380 480 290 L520 420 L0 420 Z" fill="rgba(76, 29, 149, 0.5)" />
+
+            <!-- Botanical leaves in bottom left corner -->
+            <g fill="#3b0764">
+              <path d="M-10 400 C20 350 40 300 30 250 C10 280 -5 340 -10 400 Z" />
+              <path d="M10 400 C40 360 80 320 85 270 C60 295 30 350 10 400 Z" />
+              <path d="M25 400 C60 375 115 360 135 320 C105 330 65 370 25 400 Z" />
+            </g>
+
+            <!-- Large Calendar / Schedule Board in Background -->
+            <g id="calendar-board">
+              <!-- Board drop shadow -->
+              <rect x="180" y="42" width="240" height="235" rx="16" fill="rgba(0,0,0,0.2)" />
+              <!-- White board base -->
+              <rect x="175" y="38" width="240" height="235" rx="16" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              <!-- Binder clips at top -->
+              <rect x="225" y="28" width="16" height="22" rx="4" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              <rect x="345" y="28" width="16" height="22" rx="4" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              
+              <!-- Calendar Header line -->
+              <line x1="175" y1="84" x2="415" y2="84" stroke="#e2e8f0" stroke-width="2" />
+              
+              <!-- Calendar grid lines -->
+              <line x1="225" y1="84" x2="225" y2="240" stroke="#f1f5f9" stroke-width="2" />
+              <line x1="275" y1="84" x2="275" y2="240" stroke="#f1f5f9" stroke-width="2" />
+              <line x1="325" y1="84" x2="325" y2="240" stroke="#f1f5f9" stroke-width="2" />
+              <line x1="375" y1="84" x2="375" y2="240" stroke="#f1f5f9" stroke-width="2" />
+              
+              <line x1="175" y1="130" x2="415" y2="130" stroke="#f1f5f9" stroke-width="2" />
+              <line x1="175" y1="175" x2="415" y2="175" stroke="#f1f5f9" stroke-width="2" />
+              <line x1="175" y1="220" x2="415" y2="220" stroke="#f1f5f9" stroke-width="2" />
+
+              <!-- Checked Milestone Circle Badge -->
+              <circle cx="300" cy="107" r="14" fill="#7c3aed" />
+              <path d="M294 107 L298 111 L307 102" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </g>
+
+            <!-- Floating Status Pills (Left side) -->
+            <!-- Pill 1: Club Meeting -->
+            <g id="pill-club-meeting" transform="translate(42, 54)">
+              <rect x="0" y="0" width="128" height="34" rx="8" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.2" />
+              <rect x="6" y="6" width="22" height="22" rx="6" fill="#7c3aed" />
+              <!-- Users icon inside -->
+              <circle cx="15" cy="14" r="3.2" fill="#ffffff" />
+              <path d="M10 22 C10 19 13 18 17 18 C20 18 23 19 23 22" fill="#ffffff" />
+              <text x="35" y="16" font-family="-apple-system, sans-serif" font-size="9.5" font-weight="700" fill="#1e1b4b">Club Meeting</text>
+              <line x1="35" y1="22" x2="95" y2="22" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round" />
+            </g>
+
+            <!-- Pill 2: Event Planning -->
+            <g id="pill-event-planning" transform="translate(48, 100)">
+              <rect x="0" y="0" width="132" height="34" rx="8" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.2" />
+              <rect x="6" y="6" width="22" height="22" rx="6" fill="#7c3aed" />
+              <!-- Calendar icon inside -->
+              <rect x="11" y="11" width="12" height="11" rx="2" fill="none" stroke="#ffffff" stroke-width="1.6" />
+              <line x1="11" y1="14" x2="23" y2="14" stroke="#ffffff" stroke-width="1.5" />
+              <text x="35" y="16" font-family="-apple-system, sans-serif" font-size="9.5" font-weight="700" fill="#1e1b4b">Event Planning</text>
+              <line x1="35" y1="22" x2="105" y2="22" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round" />
+            </g>
+
+            <!-- Pill 3: New Members -->
+            <g id="pill-new-members" transform="translate(42, 146)">
+              <rect x="0" y="0" width="126" height="34" rx="8" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.2" />
+              <rect x="6" y="6" width="22" height="22" rx="6" fill="#7c3aed" />
+              <!-- User plus icon inside -->
+              <circle cx="16" cy="14" r="3.2" fill="#ffffff" />
+              <path d="M11 22 C11 19 14 18 18 18 C21 18 23 19 23 22" fill="#ffffff" />
+              <text x="35" y="16" font-family="-apple-system, sans-serif" font-size="9.5" font-weight="700" fill="#1e1b4b">New Members</text>
+              <line x1="35" y1="22" x2="90" y2="22" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round" />
+            </g>
+
+            <!-- Student 1 (Left - Standing / Holding Notebook) -->
+            <g id="student-left">
+              <!-- Body / Jacket -->
+              <path d="M118 360 L124 235 C125 210 148 200 170 200 C192 200 212 210 216 235 L222 360 Z" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" stroke-linejoin="round" />
+              <!-- Collar / Inner Shirt -->
+              <path d="M152 205 L170 230 L188 205" fill="#f3e8ff" stroke="#1e1b4b" stroke-width="2.5" />
+              <line x1="170" y1="230" x2="170" y2="340" stroke="#1e1b4b" stroke-width="2.5" />
+              <!-- Head / Neck -->
+              <rect x="162" y="180" width="16" height="25" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.5" />
+              <ellipse cx="170" cy="165" rx="18" ry="22" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              <!-- Hair -->
+              <path d="M152 165 C150 145 160 135 174 135 C188 135 194 145 190 160 C186 150 178 145 168 148 C160 150 155 158 152 165 Z" fill="#1e1b4b" />
+              <!-- Smiling Face -->
+              <circle cx="164" cy="164" r="2" fill="#1e1b4b" />
+              <circle cx="176" cy="164" r="2" fill="#1e1b4b" />
+              <path d="M166 174 Q170 178 174 174" stroke="#1e1b4b" stroke-width="2" stroke-linecap="round" />
+              <!-- Tablet / Notebook in hands -->
+              <rect x="180" y="240" width="36" height="48" rx="4" transform="rotate(-15 180 240)" fill="#1e1b4b" />
+              <rect x="183" y="243" width="30" height="42" rx="3" transform="rotate(-15 180 240)" fill="#f8fafc" />
+              <!-- Hand holding tablet -->
+              <ellipse cx="188" cy="272" rx="7" ry="5" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.5" />
+            </g>
+
+            <!-- Student 3 (Right - Holding Books / Backpack) -->
+            <g id="student-right">
+              <!-- Backpack strap -->
+              <path d="M385 240 C380 280 375 320 375 360" stroke="#1e1b4b" stroke-width="4" stroke-linecap="round" />
+              <!-- Body -->
+              <path d="M340 360 L346 240 C348 215 368 205 388 205 C408 205 425 215 428 240 L432 360 Z" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" stroke-linejoin="round" />
+              <!-- Head / Neck -->
+              <rect x="380" y="180" width="16" height="25" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.5" />
+              <ellipse cx="388" cy="165" rx="17" ry="21" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              <!-- Hair Bun -->
+              <circle cx="396" cy="138" r="10" fill="#1e1b4b" />
+              <path d="M372 165 C370 145 378 140 392 140 C406 140 408 148 405 165 C400 152 392 148 384 150 C378 152 374 158 372 165 Z" fill="#1e1b4b" />
+              <!-- Glasses -->
+              <circle cx="382" cy="164" r="5" fill="none" stroke="#1e1b4b" stroke-width="2" />
+              <circle cx="394" cy="164" r="5" fill="none" stroke="#1e1b4b" stroke-width="2" />
+              <line x1="387" y1="164" x2="389" y2="164" stroke="#1e1b4b" stroke-width="2" />
+              <!-- Smiling Face -->
+              <circle cx="382" cy="164" r="1.5" fill="#1e1b4b" />
+              <circle cx="394" cy="164" r="1.5" fill="#1e1b4b" />
+              <path d="M384 174 Q388 178 392 174" stroke="#1e1b4b" stroke-width="2" stroke-linecap="round" />
+              <!-- Books / Binder held in arm -->
+              <rect x="345" y="245" width="40" height="52" rx="4" transform="rotate(12 345 245)" fill="#c084fc" stroke="#1e1b4b" stroke-width="2.5" />
+              <rect x="350" y="250" width="38" height="50" rx="3" transform="rotate(12 345 245)" fill="#ffffff" stroke="#1e1b4b" stroke-width="2" />
+            </g>
+
+            <!-- Student 2 (Center - Seated at Laptop) -->
+            <g id="student-center">
+              <!-- Seated Body -->
+              <path d="M228 360 L234 260 C236 235 258 225 280 225 C302 225 324 235 326 260 L332 360 Z" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" stroke-linejoin="round" />
+              <!-- Hoodie Strings -->
+              <path d="M268 235 Q270 255 268 265" stroke="#1e1b4b" stroke-width="2" fill="none" />
+              <path d="M292 235 Q290 255 292 265" stroke="#1e1b4b" stroke-width="2" fill="none" />
+              <!-- Neck & Head -->
+              <rect x="272" y="195" width="16" height="25" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.5" />
+              <ellipse cx="280" cy="178" rx="18" ry="22" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              <!-- Hair -->
+              <path d="M262 175 C260 152 270 144 286 144 C300 144 306 155 302 172 C298 160 288 155 278 158 C270 160 265 168 262 175 Z" fill="#1e1b4b" />
+              <!-- Smiling Face -->
+              <circle cx="274" cy="176" r="2" fill="#1e1b4b" />
+              <circle cx="286" cy="176" r="2" fill="#1e1b4b" />
+              <path d="M276 186 Q280 191 284 186" stroke="#1e1b4b" stroke-width="2" stroke-linecap="round" />
+            </g>
+
+            <!-- Foreground Desk / Table Surface -->
+            <g id="desk-surface">
+              <!-- Desk top edge with white fill & dark border -->
+              <rect x="120" y="340" width="360" height="25" rx="6" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" />
+              
+              <!-- Open Laptop on desk -->
+              <!-- Base -->
+              <rect x="248" y="330" width="74" height="12" rx="3" fill="#1e1b4b" />
+              <!-- Screen -->
+              <rect x="254" y="278" width="62" height="54" rx="4" fill="#0f172a" stroke="#1e1b4b" stroke-width="2" />
+              <!-- Glowing Screen Display -->
+              <rect x="257" y="282" width="56" height="46" rx="2" fill="#7c3aed" />
+              <!-- UI lines on laptop screen -->
+              <rect x="261" y="287" width="22" height="4" rx="1" fill="#ffffff" opacity="0.9" />
+              <rect x="261" y="295" width="48" height="3" rx="1" fill="#ffffff" opacity="0.6" />
+              <rect x="261" y="301" width="38" height="3" rx="1" fill="#ffffff" opacity="0.6" />
+              <rect x="261" y="307" width="42" height="3" rx="1" fill="#ffffff" opacity="0.6" />
+              
+              <!-- Notebook on table -->
+              <rect x="150" y="334" width="32" height="18" rx="2" fill="#f3e8ff" stroke="#1e1b4b" stroke-width="1.8" />
+              <line x1="186" y1="334" x2="198" y2="344" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" />
+            </g>
+          </svg>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // 1. Password visibility toggle
+      const toggleBtn = document.getElementById('toggle-password');
+      const pwdInput = document.getElementById('password');
+      if (toggleBtn && pwdInput) {
+        toggleBtn.addEventListener('click', function () {
+          const isPassword = pwdInput.type === 'password';
+          pwdInput.type = isPassword ? 'text' : 'password';
+          toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+          const eyeIcon = toggleBtn.querySelector('.icon-eye');
+          const eyeSlashIcon = toggleBtn.querySelector('.icon-eye-slash');
+          if (eyeIcon && eyeSlashIcon) {
+            eyeIcon.style.display = isPassword ? 'none' : 'block';
+            eyeSlashIcon.style.display = isPassword ? 'block' : 'none';
+          }
+        });
+      }
+
+      // 2. Dual Login Option Switcher (Admin Login / User Login)
+      const tabAdmin = document.getElementById('tab-admin');
+      const tabUser = document.getElementById('tab-user');
+      const hiddenType = document.getElementById('login_type');
+      const heading = document.getElementById('login-welcome-title');
+      const desc = document.getElementById('login-welcome-desc');
+      const btnText = document.getElementById('btn-login-text');
+      const loginIdLabel = document.getElementById('login-id-label');
+      const loginIdInput = document.getElementById('login_id');
+
+      function switchLoginType(type) {
+        const isUser = (type === 'user');
+        if (hiddenType) hiddenType.value = isUser ? 'user' : 'admin';
+
+        if (tabAdmin && tabUser) {
+          if (isUser) {
+            tabUser.classList.add('active');
+            tabUser.setAttribute('aria-selected', 'true');
+            tabAdmin.classList.remove('active');
+            tabAdmin.setAttribute('aria-selected', 'false');
+          } else {
+            tabAdmin.classList.add('active');
+            tabAdmin.setAttribute('aria-selected', 'true');
+            tabUser.classList.remove('active');
+            tabUser.setAttribute('aria-selected', 'false');
+          }
+        }
+
+        if (heading) {
+          heading.textContent = isUser ? 'User Portal' : 'Administrator Portal';
+        }
+        if (desc) {
+          desc.textContent = isUser
+            ? 'Sign in to access your student clubs, events, merchandise, tasks, and announcements.'
+            : 'Sign in with administrative privileges to manage club operations, finances, and users.';
+        }
+        if (btnText) {
+          btnText.textContent = isUser ? 'Sign In as User' : 'Sign In as Admin';
+        }
+        if (loginIdLabel) {
+          loginIdLabel.textContent = isUser ? 'Username or Email' : 'Admin Username or Email';
+        }
+        if (loginIdInput) {
+          loginIdInput.placeholder = isUser ? 'Enter username or email' : 'Enter admin username or email';
+          loginIdInput.focus();
+        }
+
+        const regPrompt = document.getElementById('login-register-prompt');
+        if (regPrompt) {
+          regPrompt.style.display = isUser ? 'block' : 'none';
+        }
+
+        if (window.history && window.history.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('type', isUser ? 'user' : 'admin');
+          window.history.replaceState({}, '', url);
+        }
+      }
+
+      if (tabAdmin) {
+        tabAdmin.addEventListener('click', function () {
+          switchLoginType('admin');
+        });
+      }
+      if (tabUser) {
+        tabUser.addEventListener('click', function () {
+          switchLoginType('user');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Sell Ticket — {{ event.title }}{% endblock %}
+{% block page_title %}Issue Ticket: {{ event.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Ticket Issue & Purchaser Registration</h2>
+      <a href="{{ url_for('event_view', event_id=event.id) }}" class="btn btn-sm btn-secondary">&larr; Back to Event</a>
+    </div>
+    <div class="card-body">
+      <!-- Seat Capacity Indicator -->
+      <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: 700; font-size: 1.05rem;">{{ event.title }}</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">
+            📅 {{ event.event_date | format_date }} at {{ event.event_time }} &bull; 📍 {{ event.venue }}
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 1.25rem; font-weight: 800; color: {% if remaining == 0 %}var(--danger){% else %}var(--primary){% endif %};">
+            {{ remaining }} / {{ event.capacity }}
+          </div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Seats Available</div>
+        </div>
+      </div>
+
+      {% if remaining <= 0 %}
+      <div class="alert alert-danger">
+        <strong>Event Sold Out!</strong> Maximum capacity of {{ event.capacity }} seats has been reached. No more tickets can be sold for this event.
+      </div>
+      {% else %}
+
+      <form action="{{ url_for('events_sell_ticket', event_id=event.id) }}" method="POST">
+        <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px;">
+          1. Membership Rate Verification (Optional)
+        </h3>
+
+        <div class="form-group" style="background-color: var(--primary-light); border: 1px solid var(--primary-border); padding: 14px; border-radius: var(--radius-sm);">
+          <label class="form-label" for="member_lookup" style="color: var(--primary-hover);">Club Member ID or Registered Email</label>
+          <input type="text" id="member_lookup" name="member_lookup" class="form-control" placeholder="e.g. CS-MEM-2026-0001 or member@domain.com">
+          <div class="form-text" style="color: #1e40af;">
+            If verified active, the member rate of <strong>{{ event.member_price | currency }}</strong> applies. Otherwise, general rate <strong>{{ event.non_member_price | currency }}</strong> is charged.
+          </div>
+        </div>
+
+        <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-top: 20px; margin-bottom: 12px;">
+          2. Attendee Information
+        </h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="purchaser_name">Attendee Full Name *</label>
+            <input type="text" id="purchaser_name" name="purchaser_name" class="form-control" placeholder="e.g. John Doe" required autofocus>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="purchaser_email">Email Address *</label>
+            <input type="email" id="purchaser_email" name="purchaser_email" class="form-control" placeholder="attendee@example.com" required>
+            <div class="form-text">Ticket reference will be associated with this email.</div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="purchaser_phone">Phone Number</label>
+            <input type="tel" id="purchaser_phone" name="purchaser_phone" class="form-control" placeholder="+91 98765 43210">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="payment_method">Payment Method</label>
+            <select id="payment_method" name="payment_method" class="form-select">
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI / QR Code</option>
+              <option value="Card">Debit / Credit Card</option>
+              <option value="Online">Online / Pre-paid</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Confirm & Issue Ticket</button>
+          <a href="{{ url_for('event_view', event_id=event.id) }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

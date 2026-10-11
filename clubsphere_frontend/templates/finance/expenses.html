@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% block title %}Expense Requests & Approvals — ClubSphere{% endblock %}
+{% block page_title %}Expense Requests & Approvals{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('expenses_new') }}" class="btn btn-primary btn-sm">+ Submit Expense Request</a>
+{% if current_user.role in ['Administrator', 'Treasurer'] %}
+<a href="{{ url_for('finance_ledger') }}" class="btn btn-secondary btn-sm">Financial Ledger &rarr;</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="expenses-page-container">
+
+  <!-- Header Subtitle -->
+  <div class="expenses-header-sub">
+    <p class="page-subtitle" style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+      Review requests, track approvals, and manage reimbursements.
+    </p>
+  </div>
+
+  <!-- 1. Expense Lifecycle Guide -->
+  <div class="expense-lifecycle-card">
+    <div class="lifecycle-steps-row">
+      <div class="lifecycle-step">
+        <span class="step-num">1</span>
+        <span class="step-icon">📝</span>
+        <span class="step-name">Request Submitted</span>
+      </div>
+      <div class="step-divider"></div>
+      <div class="lifecycle-step">
+        <span class="step-num">2</span>
+        <span class="step-icon">⏳</span>
+        <span class="step-name">Pending Review</span>
+      </div>
+      <div class="step-divider"></div>
+      <div class="lifecycle-step">
+        <span class="step-num">3</span>
+        <span class="step-icon">⚖️</span>
+        <span class="step-name">Approved / Rejected</span>
+      </div>
+      <div class="step-divider"></div>
+      <div class="lifecycle-step">
+        <span class="step-num">4</span>
+        <span class="step-icon">💳</span>
+        <span class="step-name">Disbursement (Paid)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Main Expenses Card with Status Tabs and Table -->
+  <div class="expenses-card">
+    <!-- Status Filter Navigation Tabs -->
+    <div class="expense-filter-tabs">
+      <a href="{{ url_for('expenses_list') }}" class="filter-tab {% if not status_filter %}active{% endif %}">
+        <span>All</span>
+        {% if status_counts %}<span class="tab-count">{{ status_counts.all }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('expenses_list', status='Pending') }}" class="filter-tab {% if status_filter == 'Pending' %}active{% endif %}">
+        <span>Pending Review</span>
+        {% if status_counts %}<span class="tab-count count-amber">{{ status_counts.Pending }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('expenses_list', status='Approved') }}" class="filter-tab {% if status_filter == 'Approved' %}active{% endif %}">
+        <span>Approved (Unpaid)</span>
+        {% if status_counts %}<span class="tab-count count-blue">{{ status_counts.Approved }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('expenses_list', status='Paid') }}" class="filter-tab {% if status_filter == 'Paid' %}active{% endif %}">
+        <span>Paid</span>
+        {% if status_counts %}<span class="tab-count count-green">{{ status_counts.Paid }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('expenses_list', status='Rejected') }}" class="filter-tab {% if status_filter == 'Rejected' %}active{% endif %}">
+        <span>Rejected</span>
+        {% if status_counts %}<span class="tab-count count-red">{{ status_counts.Rejected }}</span>{% endif %}
+      </a>
+    </div>
+
+    <!-- Expenses Table -->
+    {% if expenses %}
+    <div class="table-responsive">
+      <table class="table expenses-table">
+        <thead>
+          <tr>
+            <th style="min-width: 240px;">Expense</th>
+            <th style="min-width: 150px;">Event</th>
+            <th style="min-width: 120px; text-align: right;">Amount</th>
+            <th style="min-width: 170px;">Requested By</th>
+            <th style="min-width: 140px;">Receipt / Reference</th>
+            <th style="min-width: 140px;">Status</th>
+            <th style="min-width: 140px; text-align: center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exp in expenses %}
+          <tr class="expense-row">
+            <!-- Expense Column -->
+            <td>
+              <div class="expense-title-text">{{ exp.title }}</div>
+              <div class="expense-sub-text">
+                <span class="expense-category-pill">{{ exp.category }}</span>
+                {% if exp.description %}
+                <span class="expense-bullet">&bull;</span>
+                <span class="expense-desc-text" title="{{ exp.description }}">{{ exp.description }}</span>
+                {% endif %}
+              </div>
+            </td>
+
+            <!-- Event Column -->
+            <td>
+              {% if exp.event_title %}
+              <span class="event-name-tag" title="{{ exp.event_title }}">
+                <span class="event-tag-icon">📍</span> {{ exp.event_title }}
+              </span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Amount Column -->
+            <td style="text-align: right;">
+              <span class="expense-amount-number">{{ exp.amount | currency }}</span>
+            </td>
+
+            <!-- Requested By Column -->
+            <td>
+              {% set name_parts = (exp.requester_name or 'User').strip().split() %}
+              {% if name_parts | length >= 2 %}
+                {% set initials = (name_parts[0][0] ~ name_parts[-1][0]) | upper %}
+              {% elif name_parts | length == 1 and name_parts[0] %}
+                {% set initials = name_parts[0][:2] | upper %}
+              {% else %}
+                {% set initials = 'U' %}
+              {% endif %}
+              <div class="requester-cell">
+                <span class="user-avatar-mini" aria-hidden="true">{{ initials }}</span>
+                <div class="requester-info">
+                  <span class="requester-name">{{ exp.requester_name }}</span>
+                  <span class="requester-date">{{ exp.created_at | format_date }}</span>
+                </div>
+              </div>
+            </td>
+
+            <!-- Receipt / Reference Column -->
+            <td>
+              {% if exp.receipt_ref %}
+              <code class="receipt-code">{{ exp.receipt_ref }}</code>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Status Column -->
+            <td>
+              {% if exp.status == 'Pending' %}
+              <span class="badge-status-pending">
+                <span class="badge-dot-amber"></span>Pending Review
+              </span>
+              {% elif exp.status == 'Approved' %}
+              <span class="badge-status-approved">
+                <span class="badge-dot-blue"></span>Approved (Unpaid)
+              </span>
+              {% elif exp.status == 'Paid' %}
+              <span class="badge-status-paid">
+                <span class="badge-dot-green"></span>Paid
+              </span>
+              {% if exp.payer_name %}
+              <div class="status-meta-text">By {{ exp.payer_name }}</div>
+              {% endif %}
+              {% else %}
+              <span class="badge-status-rejected">
+                <span class="badge-dot-red"></span>Rejected
+              </span>
+              {% if exp.rejection_reason %}
+              <div class="status-reason-text" title="{{ exp.rejection_reason }}">{{ exp.rejection_reason }}</div>
+              {% endif %}
+              {% endif %}
+            </td>
+
+            <!-- Actions Column -->
+            <td style="text-align: center;">
+              {% if current_user.role in ['Administrator', 'Treasurer'] %}
+                {% if exp.status == 'Pending' %}
+                <div class="expense-actions-cell" style="justify-content: center; display: flex; gap: 6px; align-items: center;">
+                  <form action="{{ url_for('expenses_approve', expense_id=exp.id) }}" method="POST" style="display:inline; margin: 0;">
+                    <button type="submit" class="btn btn-sm btn-success btn-expense-action">Approve</button>
+                  </form>
+                  <button type="button" class="btn btn-sm btn-danger btn-expense-action" data-modal-target="reject-modal-{{ exp.id }}">Reject</button>
+                </div>
+
+                <!-- Reject Modal -->
+                <div id="reject-modal-{{ exp.id }}" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+                  <div class="modal-box" style="background: white; border-radius: var(--radius-md); max-width: 440px; width: 100%; padding: 22px; box-shadow: var(--shadow-lg); text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                      <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Reject Expense Request</h3>
+                      <button type="button" class="modal-close" style="background:none; border:none; font-size: 1.4rem; line-height: 1; cursor:pointer; color: var(--text-muted);">&times;</button>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                      Rejecting <strong>{{ exp.title }}</strong> ({{ exp.amount | currency }}).
+                    </p>
+                    <form action="{{ url_for('expenses_reject', expense_id=exp.id) }}" method="POST">
+                      <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px;">Reason for rejection *</label>
+                        <input type="text" name="rejection_reason" class="form-control" placeholder="e.g. Missing receipt or exceeds allocation" required style="width: 100%;">
+                      </div>
+                      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button type="button" data-modal-close class="btn btn-secondary btn-sm">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm">Confirm Rejection</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
+                {% elif exp.status == 'Approved' %}
+                <button type="button" class="btn btn-sm btn-primary btn-expense-action" data-modal-target="pay-modal-{{ exp.id }}">Disburse / Pay</button>
+
+                <!-- Pay Modal -->
+                <div id="pay-modal-{{ exp.id }}" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+                  <div class="modal-box" style="background: white; border-radius: var(--radius-md); max-width: 480px; width: 100%; padding: 22px; box-shadow: var(--shadow-lg); text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                      <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Disburse Expense Payment</h3>
+                      <button type="button" class="modal-close" style="background:none; border:none; font-size: 1.4rem; line-height: 1; cursor:pointer; color: var(--text-muted);">&times;</button>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                      Confirming disbursement for <strong>{{ exp.title }}</strong> ({{ exp.amount | currency }}). This will post immediately to the financial ledger.
+                    </p>
+                    <form action="{{ url_for('expenses_pay', expense_id=exp.id) }}" method="POST">
+                      <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Payment Mode *</label>
+                        <select name="payment_method" class="form-select" style="width: 100%;">
+                          <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                          <option value="UPI">UPI / QR Code</option>
+                          <option value="Cash">Cash</option>
+                          <option value="Cheque">Cheque</option>
+                        </select>
+                      </div>
+                      <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Payment Reference / UTR No.</label>
+                        <input type="text" name="payment_ref" class="form-control" placeholder="e.g. UTR-982374823" style="width: 100%;">
+                      </div>
+                      <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Disbursement Date *</label>
+                        <input type="date" name="paid_date" class="form-control" value="{{ today_str }}" required style="width: 100%;">
+                      </div>
+                      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button type="button" data-modal-close class="btn btn-secondary btn-sm">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm">Confirm & Post to Ledger</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px 20px; text-align: center;">
+      <div style="font-size: 2.2rem; margin-bottom: 10px; color: var(--text-muted);">🧾</div>
+      <div style="font-weight: 700; color: var(--text-primary); font-size: 1rem; margin-bottom: 4px;">No expense requests found</div>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 18px; max-width: 420px; margin-left: auto; margin-right: auto;">
+        {% if status_filter %}
+        No requests currently match the "{{ status_filter }}" status filter.
+        {% else %}
+        Submit receipts or reimbursement claims for club activities, equipment, or event operations.
+        {% endif %}
+      </p>
+      {% if status_filter %}
+      <a href="{{ url_for('expenses_list') }}" class="btn btn-secondary btn-sm" style="margin-right: 8px;">View All Requests</a>
+      {% endif %}
+      <a href="{{ url_for('expenses_new') }}" class="btn btn-primary btn-sm">+ Submit Expense Request</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

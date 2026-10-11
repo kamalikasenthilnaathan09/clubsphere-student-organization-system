@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% block title %}Membership Directory — ClubSphere{% endblock %}
+{% block page_title %}Membership Directory{% endblock %}
+
+{% block top_actions %}
+{% if current_user.role in ['Administrator', 'Treasurer'] %}
+<a href="{{ url_for('members_new') }}" class="btn btn-primary btn-sm">+ Register Member</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- 1. Header with Title, Subtitle, Demo Indicator, and Primary Action -->
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <h1 class="page-title" style="margin: 0;">Membership Directory</h1>
+      {% if is_demo_mode %}
+      <span class="badge badge-warning" style="font-size: 0.72rem; padding: 3px 8px; font-weight: 700; letter-spacing: 0.4px;">DEMO ENVIRONMENT</span>
+      {% endif %}
+    </div>
+    <p class="page-subtitle" style="margin-top: 4px;">Manage members, renewals and outstanding dues.</p>
+  </div>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    {% if current_user.role in ['Administrator', 'Treasurer'] %}
+    <a href="{{ url_for('members_new') }}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+      <span style="font-size: 1.1rem; line-height: 1;">+</span> Register Member
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 2. Four Compact KPI Summary Cards -->
+<div class="primary-kpis-grid" style="margin-bottom: 24px;">
+  <!-- Total Members -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Total Members</span>
+      <div class="stat-icon icon-blue">👥</div>
+    </div>
+    <div class="stat-value">{{ summary_stats.total }}</div>
+    <div class="stat-subtitle">Registered organization records</div>
+  </div>
+
+  <!-- Active Members -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Active Members</span>
+      <div class="stat-icon icon-green">✅</div>
+    </div>
+    <div class="stat-value" style="color: var(--success);">{{ summary_stats.active }}</div>
+    <div class="stat-subtitle">Unexpired with active status</div>
+  </div>
+
+  <!-- Outstanding Dues -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Outstanding Dues</span>
+      <div class="stat-icon icon-amber">⏳</div>
+    </div>
+    <div class="stat-value" style="color: {% if summary_stats.outstanding_dues > 0 %}var(--warning){% else %}var(--success){% endif %};">
+      {{ summary_stats.outstanding_dues | currency }}
+    </div>
+    <div class="stat-subtitle">Pending settlement across club</div>
+  </div>
+
+  <!-- Expired Members -->
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Expired Members</span>
+      <div class="stat-icon icon-red">⚠️</div>
+    </div>
+    <div class="stat-value" style="color: var(--danger);">{{ summary_stats.expired }}</div>
+    <div class="stat-subtitle">Require renewal action</div>
+  </div>
+</div>
+
+<!-- 3. Search and Unified Filter Controls Bar -->
+<div class="members-control-bar">
+  <form method="GET" action="{{ url_for('members_list') }}" id="memberFilterForm">
+    <input type="hidden" name="view" id="viewModeInput" value="{{ view_mode }}">
+    
+    <div class="members-search-row">
+      <!-- Search Input -->
+      <div class="members-search-input-wrap">
+        <span class="members-search-icon">🔍</span>
+        <input type="text" name="search" class="members-search-input" placeholder="Search by name, member code, student ID, email..." value="{{ search }}">
+      </div>
+
+      <!-- Quick Status Filter Pills -->
+      <div class="filter-pills-group" role="group" aria-label="Status Filters">
+        <button type="submit" name="status" value="" class="filter-pill-btn {% if not status_filter %}active{% endif %}">All</button>
+        <button type="submit" name="status" value="Active" class="filter-pill-btn {% if status_filter == 'Active' %}active{% endif %}">Active</button>
+        <button type="submit" name="status" value="Pending" class="filter-pill-btn {% if status_filter == 'Pending' %}active{% endif %}">Pending</button>
+        <button type="submit" name="status" value="Expired" class="filter-pill-btn {% if status_filter == 'Expired' %}active{% endif %}">Expired</button>
+      </div>
+
+      <!-- Advanced Filter Toggle Button -->
+      <button type="button" class="btn btn-sm btn-outline" id="btnToggleAdvancedFilters" onclick="toggleAdvancedFilters()" style="display: inline-flex; align-items: center; gap: 5px;">
+        <span>⚙️</span> Filters
+        {% if type_filter %}
+        <span class="badge badge-primary" style="font-size: 0.68rem; padding: 1px 5px;">1</span>
+        {% endif %}
+      </button>
+
+      <!-- Search Submit Button -->
+      <button type="submit" class="btn btn-sm btn-primary">Search</button>
+
+      {% if search or status_filter or type_filter %}
+      <a href="{{ url_for('members_list', view=view_mode) }}" class="btn btn-sm btn-outline" title="Clear all search and filter parameters">Clear</a>
+      {% endif %}
+
+      <!-- View Toggle Switcher (Cards vs Table) -->
+      <div class="view-toggle-group" style="margin-left: auto;">
+        <button type="button" class="view-toggle-btn {% if view_mode != 'table' %}active{% endif %}" id="btnViewCards" onclick="switchMemberView('cards')" title="Card View">
+          <span>🪟</span> Cards
+        </button>
+        <button type="button" class="view-toggle-btn {% if view_mode == 'table' %}active{% endif %}" id="btnViewTable" onclick="switchMemberView('table')" title="Table View">
+          <span>📋</span> Table
+        </button>
+      </div>
+    </div>
+
+    <!-- Expandable Filter Panel -->
+    <div class="advanced-filters-panel {% if type_filter %}open{% endif %}" id="advancedFilterPanel">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);">Membership Type:</span>
+        <select name="type" class="form-select" style="width: auto; padding: 4px 10px; font-size: 0.82rem;" onchange="document.getElementById('memberFilterForm').submit()">
+          <option value="">All Types</option>
+          <option value="Annual" {% if type_filter == 'Annual' %}selected{% endif %}>Annual</option>
+          <option value="Semester" {% if type_filter == 'Semester' %}selected{% endif %}>Semester</option>
+          <option value="Lifetime" {% if type_filter == 'Lifetime' %}selected{% endif %}>Lifetime</option>
+        </select>
+      </div>
+
+      <div style="margin-left: auto; font-size: 0.82rem; color: var(--text-muted);">
+        Showing <strong>{{ members | length }}</strong> of <strong>{{ summary_stats.total }}</strong> members
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- 4. Members Content (Cards or Table) -->
+{% if members %}
+
+  <!-- A. Card View Grid -->
+  <div class="member-cards-grid" id="membersCardsView" style="{% if view_mode == 'table' %}display: none;{% endif %}">
+    {% for m in members %}
+      {% set name_parts = m.full_name.split() %}
+      {% if name_parts | length >= 2 %}
+        {% set initials = (name_parts[0][0] + name_parts[1][0]) | upper %}
+      {% else %}
+        {% set initials = m.full_name[:2] | upper %}
+      {% endif %}
+
+      <div class="member-card">
+        <!-- Card Header -->
+        <div class="member-card-header">
+          <!-- Initials Avatar -->
+          <div class="member-avatar {% if m.calculated_status == 'Active' %}avatar-active{% elif m.calculated_status == 'Expired' %}avatar-expired{% else %}avatar-pending{% endif %}">
+            {{ initials }}
+          </div>
+
+          <div class="member-header-info">
+            <div class="member-name" title="{{ m.full_name }}">
+              <a href="{{ url_for('member_view', member_id=m.id) }}">{{ m.full_name }}</a>
+            </div>
+            <div>
+              <span class="member-code-badge">{{ m.member_code }}</span>
+            </div>
+            <div class="member-badge-row">
+              {% if m.calculated_status == 'Active' %}
+              <span class="badge badge-active">Active</span>
+              {% elif m.calculated_status == 'Expired' %}
+              <span class="badge badge-expired">Expired</span>
+              {% else %}
+              <span class="badge badge-pending">{{ m.status }}</span>
+              {% endif %}
+              <span class="badge badge-neutral">{{ m.membership_type }}</span>
+            </div>
+          </div>
+
+          <!-- Three-Dot Action Dropdown Menu -->
+          <div class="member-action-menu">
+            <button type="button" class="btn-three-dots" onclick="toggleMemberDropdown(event, 'drop-{{ m.id }}')" aria-label="Member Actions" title="Actions">
+              &#8942;
+            </button>
+            <div class="action-dropdown-menu" id="drop-{{ m.id }}">
+              <a href="{{ url_for('member_view', member_id=m.id) }}" class="action-dropdown-item">
+                <span>👤</span> View Profile
+              </a>
+              {% if current_user.role in ['Administrator', 'Treasurer'] %}
+              <a href="{{ url_for('members_edit', member_id=m.id) }}" class="action-dropdown-item">
+                <span>✏️</span> Edit Profile
+              </a>
+              {% if m.balance_dues > 0 %}
+              <a href="{{ url_for('member_view', member_id=m.id) }}" class="action-dropdown-item" style="color: var(--warning);">
+                <span>💳</span> Settle Dues
+              </a>
+              {% endif %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="member-card-body">
+          <!-- Student ID & Department -->
+          <div class="member-meta-item">
+            <span class="member-meta-icon">🎓</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ID: <strong>{{ m.student_id or 'N/A' }}</strong> &bull; {{ m.department or 'General' }}
+            </span>
+          </div>
+
+          <!-- Email Contact -->
+          <div class="member-meta-item">
+            <span class="member-meta-icon">✉️</span>
+            <a href="mailto:{{ m.email }}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="{{ m.email }}">
+              {{ m.email }}
+            </a>
+          </div>
+
+          <!-- Phone (if available) -->
+          {% if m.phone %}
+          <div class="member-meta-item">
+            <span class="member-meta-icon">📞</span>
+            <span>{{ m.phone }}</span>
+          </div>
+          {% endif %}
+
+          <!-- Validity / Expiry Date -->
+          <div class="member-meta-item">
+            <span class="member-meta-icon">📅</span>
+            <span>
+              Expires: 
+              <strong style="color: {% if m.calculated_status == 'Expired' %}var(--danger){% else %}var(--text-primary){% endif %};">
+                {{ m.expiry_date | format_date }}
+              </strong>
+            </span>
+          </div>
+
+          <!-- Financial Summary Strip -->
+          <div class="member-fin-box">
+            <div class="member-fin-col">
+              <span class="member-fin-label">Total Fee</span>
+              <span class="member-fin-val">{{ m.membership_fee | currency }}</span>
+            </div>
+            <div class="member-fin-col">
+              <span class="member-fin-label">Paid</span>
+              <span class="member-fin-val">{{ m.amount_paid | currency }}</span>
+            </div>
+            <div class="member-fin-col">
+              <span class="member-fin-label">Outstanding</span>
+              {% if m.balance_dues > 0 %}
+              <span class="member-fin-val dues-pending">{{ m.balance_dues | currency }}</span>
+              {% else %}
+              <span class="member-fin-val dues-settled">Settled</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="member-card-footer">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">
+            Joined: {{ m.join_date | format_date }}
+          </span>
+          <a href="{{ url_for('member_view', member_id=m.id) }}" class="btn btn-sm btn-outline" style="font-weight: 600;">
+            View Profile
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- B. Table View Scan -->
+  <div class="card" id="membersTableView" style="{% if view_mode != 'table' %}display: none;{% endif %} margin-bottom: 28px;">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Member Code</th>
+              <th>Name &amp; Student ID</th>
+              <th>Contact</th>
+              <th>Type</th>
+              <th>Validity</th>
+              <th>Fee / Paid / Dues</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in members %}
+            <tr>
+              <td>
+                <a href="{{ url_for('member_view', member_id=m.id) }}">
+                  <code>{{ m.member_code }}</code>
+                </a>
+              </td>
+              <td>
+                <div style="font-weight: 600;">
+                  <a href="{{ url_for('member_view', member_id=m.id) }}">{{ m.full_name }}</a>
+                </div>
+                {% if m.student_id %}
+                <div style="font-size: 0.75rem; color: var(--text-muted);">ID: {{ m.student_id }} &bull; {{ m.department or '' }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <div><a href="mailto:{{ m.email }}">{{ m.email }}</a></div>
+                {% if m.phone %}<div style="font-size: 0.75rem; color: var(--text-muted);">{{ m.phone }}</div>{% endif %}
+              </td>
+              <td><span class="badge badge-neutral">{{ m.membership_type }}</span></td>
+              <td>
+                <div style="font-size: 0.8rem;">
+                  Expires: <strong style="color: {% if m.calculated_status == 'Expired' %}var(--danger){% else %}inherit{% endif %};">{{ m.expiry_date | format_date }}</strong>
+                </div>
+              </td>
+              <td>
+                <div>{{ m.membership_fee | currency }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Paid: {{ m.amount_paid | currency }}</div>
+                {% if m.balance_dues > 0 %}
+                <div style="font-size: 0.75rem; font-weight: 600; color: var(--danger);">
+                  Dues: {{ m.balance_dues | currency }}
+                </div>
+                {% endif %}
+              </td>
+              <td>
+                {% if m.calculated_status == 'Active' %}
+                <span class="badge badge-active">Active</span>
+                {% elif m.calculated_status == 'Expired' %}
+                <span class="badge badge-expired">Expired</span>
+                {% else %}
+                <span class="badge badge-pending">{{ m.status }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <a href="{{ url_for('member_view', member_id=m.id) }}" class="btn btn-sm btn-outline">View Profile</a>
+                  {% if current_user.role in ['Administrator', 'Treasurer'] %}
+                  <a href="{{ url_for('members_edit', member_id=m.id) }}" class="btn btn-sm btn-ghost" title="Edit member">✏️</a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  <!-- Empty State Card -->
+  <div class="empty-state-card" style="padding: 60px 20px;">
+    <div class="empty-icon">👥</div>
+    <h4>No members found</h4>
+    <p>
+      {% if search or status_filter or type_filter %}
+      No member records match your search query or active filter settings. Try clearing filters or refining your search term.
+      {% else %}
+      Get started by registering the first organization member.
+      {% endif %}
+    </p>
+    <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+      {% if search or status_filter or type_filter %}
+      <a href="{{ url_for('members_list') }}" class="btn btn-outline btn-sm">Clear Filters</a>
+      {% endif %}
+      {% if current_user.role in ['Administrator', 'Treasurer'] %}
+      <a href="{{ url_for('members_new') }}" class="btn btn-primary btn-sm">+ Register Member</a>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+  // 1. View Switcher (Cards vs Table)
+  window.switchMemberView = function(mode) {
+    const cardsView = document.getElementById('membersCardsView');
+    const tableView = document.getElementById('membersTableView');
+    const btnCards = document.getElementById('btnViewCards');
+    const btnTable = document.getElementById('btnViewTable');
+    const inputView = document.getElementById('viewModeInput');
+
+    if (mode === 'table') {
+      if (cardsView) cardsView.style.display = 'none';
+      if (tableView) tableView.style.display = 'block';
+      if (btnCards) btnCards.classList.remove('active');
+      if (btnTable) btnTable.classList.add('active');
+      if (inputView) inputView.value = 'table';
+      try { localStorage.setItem('clubsphere_members_view', 'table'); } catch(e){}
+    } else {
+      if (cardsView) cardsView.style.display = 'grid';
+      if (tableView) tableView.style.display = 'none';
+      if (btnCards) btnCards.classList.add('active');
+      if (btnTable) btnTable.classList.remove('active');
+      if (inputView) inputView.value = 'cards';
+      try { localStorage.setItem('clubsphere_members_view', 'cards'); } catch(e){}
+    }
+  };
+
+  // Restore saved view preference if URL did not explicitly set it
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('view')) {
+      const saved = localStorage.getItem('clubsphere_members_view');
+      if (saved === 'table') {
+        switchMemberView('table');
+      }
+    }
+  } catch(e){}
+
+  // 2. Advanced Filters Toggle
+  window.toggleAdvancedFilters = function() {
+    const panel = document.getElementById('advancedFilterPanel');
+    if (panel) {
+      panel.classList.toggle('open');
+    }
+  };
+
+  // 3. Three-Dot Action Dropdown Menu Toggle
+  window.toggleMemberDropdown = function(event, menuId) {
+    event.stopPropagation();
+    // Close any other open menus
+    document.querySelectorAll('.action-dropdown-menu.show').forEach(el => {
+      if (el.id !== menuId) el.classList.remove('show');
+    });
+    const menu = document.getElementById(menuId);
+    if (menu) {
+      menu.classList.toggle('show');
+    }
+  };
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', function() {
+    document.querySelectorAll('.action-dropdown-menu.show').forEach(el => {
+      el.classList.remove('show');
+    });
+  });
+})();
+</script>
+{% endblock %}

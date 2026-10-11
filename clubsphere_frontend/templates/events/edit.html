@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Edit {{ event.title }} — ClubSphere{% endblock %}
+{% block page_title %}Edit Event: {{ event.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Modify Event Details</h2>
+      <a href="{{ url_for('event_view', event_id=event.id) }}" class="btn btn-sm btn-secondary">&larr; Cancel</a>
+    </div>
+    <div class="card-body">
+      <form action="{{ url_for('events_edit', event_id=event.id) }}" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <label class="form-label" for="title">Event Title *</label>
+          <input type="text" id="title" name="title" class="form-control" value="{{ event.title }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Event Description</label>
+          <textarea id="description" name="description" class="form-control" rows="3">{{ event.description or '' }}</textarea>
+        </div>
+
+        <!-- Poster Image Update (Feature A) -->
+        <div class="form-group" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+          <label class="form-label" for="poster_image" style="font-weight: 700; color: var(--text-primary);">
+            🖼️ Update Event Poster Image
+          </label>
+          
+          {% if event.poster_image %}
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px; background: #ffffff; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <img src="{{ event_poster_url(event.poster_image) }}" alt="Current Poster" style="width: 120px; height: 68px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);"
+                 onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/event-placeholder.svg') }}';">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Current Poster Active</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Leave the file input below empty to keep this current poster image.</div>
+            </div>
+          </div>
+          {% endif %}
+
+          <input type="file" id="poster_image" name="poster_image" class="form-control" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif">
+          <div class="form-text" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 6px;">
+            Upload a new poster image (PNG, JPG, JPEG, WEBP, GIF up to 5MB). Leave empty to retain current poster.
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="event_date">Event Date *</label>
+            <input type="date" id="event_date" name="event_date" class="form-control" value="{{ event.event_date }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="event_time">Event Time *</label>
+            <input type="time" id="event_time" name="event_time" class="form-control" value="{{ event.event_time }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="status">Event Status</label>
+            <select id="status" name="status" class="form-select">
+              <option value="Upcoming" {% if event.status == 'Upcoming' %}selected{% endif %}>Upcoming</option>
+              <option value="Ongoing" {% if event.status == 'Ongoing' %}selected{% endif %}>Ongoing</option>
+              <option value="Completed" {% if event.status == 'Completed' %}selected{% endif %}>Completed</option>
+              <option value="Cancelled" {% if event.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="venue">Event Venue / Location *</label>
+            <input type="text" id="venue" name="venue" class="form-control" value="{{ event.venue }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="capacity">Maximum Seat Capacity *</label>
+            <input type="number" min="{{ tickets_sold }}" id="capacity" name="capacity" class="form-control" value="{{ event.capacity }}" required>
+            <div class="form-text">Cannot be lower than tickets already sold ({{ tickets_sold }} sold).</div>
+          </div>
+        </div>
+
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="member_price">Member Ticket Price (₹) *</label>
+            <input type="number" step="0.01" min="0" id="member_price" name="member_price" class="form-control" value="{{ event.member_price }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="non_member_price">General Ticket Price (₹) *</label>
+            <input type="number" step="0.01" min="0" id="non_member_price" name="non_member_price" class="form-control" value="{{ event.non_member_price }}" required>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <a href="{{ url_for('event_view', event_id=event.id) }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

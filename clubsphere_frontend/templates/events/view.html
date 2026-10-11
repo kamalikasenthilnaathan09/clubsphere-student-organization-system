@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}{{ event.title }} — ClubSphere{% endblock %}
+{% block page_title %}{{ event.title }}{% endblock %}
+
+{% block top_actions %}
+<a href="{{ url_for('events_list') }}" class="btn btn-secondary btn-sm">&larr; Events List</a>
+{% if remaining_seats > 0 and event.status != 'Cancelled' %}
+<a href="{{ url_for('event_register', event_id=event.id) }}" class="btn btn-primary btn-sm">Register Now &rarr;</a>
+{% if current_user.role in ['Administrator', 'Event Organizer', 'Treasurer'] %}
+<a href="{{ url_for('events_sell_ticket', event_id=event.id) }}" class="btn btn-secondary btn-sm">+ Sell Ticket</a>
+{% endif %}
+{% endif %}
+{% if current_user.role in ['Administrator', 'Event Organizer'] %}
+<a href="{{ url_for('events_edit', event_id=event.id) }}" class="btn btn-secondary btn-sm">Edit Event</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Top Metrics Row -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-card-header">
+      <span class="stat-title">Tickets Sold / Capacity</span>
+      <div class="stat-icon icon-sky">🎟️</div>
+    </div>
+    <div class="stat-value">{{ tickets_sold }} / {{ event.capacity }}</div>
+    <div class="stat-subtitle">
+      <span class="badge {% if remaining_seats == 0 %}badge-expired{% else %}badge-active{% endif %}">
+        {{ remaining_seats }} seats remaining
+      </span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-header">
+      <span class="stat-title">Checked-In Attendees</span>
+      <div class="stat-icon icon-green">✅</div>
+    </div>
+    <div class="stat-value">{{ tickets_checked_in }}</div>
+    <div class="stat-subtitle">
+      {% if tickets_sold > 0 %}
+      {{ ((tickets_checked_in / tickets_sold) * 100)|round|int }}% turnout
+      {% else %}
+      0% turnout
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-header">
+      <span class="stat-title">Event Revenue</span>
+      <div class="stat-icon icon-green">💵</div>
+    </div>
+    <div class="stat-value" style="color: var(--success);">{{ event_revenue | currency }}</div>
+    <div class="stat-subtitle">
+      From {{ tickets_sold }} confirmed tickets
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-header">
+      <span class="stat-title">Event Net Margin</span>
+      <div class="stat-icon icon-blue">📊</div>
+    </div>
+    <div class="stat-value" style="color: {% if net_event_profit >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+      {{ net_event_profit | currency }}
+    </div>
+    <div class="stat-subtitle">
+      Expenses paid: {{ paid_expenses | currency }}
+    </div>
+  </div>
+</div>
+
+<!-- Event Info Card with Poster Display (Feature A) -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Event Details</h2>
+    <div>
+      <span class="badge badge-upcoming">{{ event.status }}</span>
+      {% if remaining_seats > 0 and event.status != 'Cancelled' %}
+      <a href="{{ url_for('event_register', event_id=event.id) }}" class="btn btn-sm btn-primary" style="margin-left: 8px;">
+        Register Now &rarr;
+      </a>
+      {% endif %}
+      <a href="{{ url_for('ticket_checkin', event_id=event.id) }}" class="btn btn-sm btn-secondary" style="margin-left: 8px;">
+        Gate Console &rarr;
+      </a>
+    </div>
+  </div>
+  <div class="card-body">
+    <div style="display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px;">
+      <!-- Poster Banner Image -->
+      <div style="flex: 0 0 280px; max-width: 100%;">
+        <img src="{{ event_poster_url(event.poster_image) }}" 
+             alt="{{ event.title }}" 
+             style="width: 100%; height: 160px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);"
+             onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/event-placeholder.svg') }}';">
+      </div>
+
+      <!-- Event Details Meta -->
+      <div style="flex: 1; min-width: 260px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 14px;">
+          <div>
+            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Date & Time</span>
+            <strong>{{ event.event_date | format_date }} at {{ event.event_time }}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Venue</span>
+            <strong>📍 {{ event.venue }}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Ticket Prices</span>
+            <span>Members: <strong style="color: var(--primary);">{{ event.member_price | currency }}</strong> &bull; Standard: <strong>{{ event.non_member_price | currency }}</strong></span>
+          </div>
+        </div>
+
+        {% if event.description %}
+        <p style="color: var(--text-secondary); line-height: 1.5; font-size: 0.95rem; margin: 0;">{{ event.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tickets List Table -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">🎟️ Issued Tickets & Attendees ({{ tickets | length }})</h2>
+    {% if remaining_seats > 0 and event.status != 'Cancelled' %}
+    <a href="{{ url_for('events_sell_ticket', event_id=event.id) }}" class="btn btn-sm btn-primary">+ Sell Ticket</a>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if tickets %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Ticket Ref</th>
+            <th>Attendee Name</th>
+            <th>Email & Phone</th>
+            <th>Rate / Price</th>
+            <th>Attendance Status</th>
+            <th>Check-in Details</th>
+            <th>Pass</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td>
+              <a href="{{ url_for('ticket_badge', ticket_ref=t.ticket_ref) }}">
+                <code>{{ t.ticket_ref }}</code>
+              </a>
+            </td>
+            <td><strong>{{ t.purchaser_name }}</strong></td>
+            <td>
+              <div>{{ t.purchaser_email }}</div>
+              {% if t.purchaser_phone %}<div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.purchaser_phone }}</div>{% endif %}
+            </td>
+            <td>
+              <div>{{ t.price_paid | currency }}</div>
+              {% if t.is_member_rate %}
+              <span class="badge badge-active" style="font-size: 0.65rem;">Member</span>
+              {% else %}
+              <span class="badge badge-neutral" style="font-size: 0.65rem;">General</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if t.checked_in %}
+              <span class="badge badge-confirmed">Checked In</span>
+              {% else %}
+              <span class="badge badge-upcoming">Not Checked In</span>
+              {% endif %}
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">
+              {% if t.checked_in %}
+              {{ t.check_in_time }} {% if t.checkin_by_name %}by {{ t.checkin_by_name }}{% endif %}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('ticket_badge', ticket_ref=t.ticket_ref) }}" class="btn btn-sm btn-secondary">Badge</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🎟️</div>
+      <div class="empty-state-title">No tickets issued yet</div>
+      <p class="empty-state-text">Start selling tickets to club members and guests.</p>
+      {% if remaining_seats > 0 %}
+      <a href="{{ url_for('events_sell_ticket', event_id=event.id) }}" class="btn btn-primary btn-sm">Sell First Ticket</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Register — {{ event.title }}{% endblock %}
+{% block page_title %}Event Registration: {{ event.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 780px;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Event Registration &amp; Pass Checkout</h2>
+      <a href="{{ url_for('event_view', event_id=event.id) }}" class="btn btn-sm btn-secondary">&larr; Back to Event</a>
+    </div>
+
+    <div class="card-body">
+      <!-- Event Hero Box with Poster Image -->
+      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+        <img src="{{ event_poster_url(event.poster_image) }}" 
+             alt="{{ event.title }}" 
+             style="width: 140px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); flex-shrink: 0;"
+             onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/event-placeholder.svg') }}';">
+        <div style="flex: 1; min-width: 200px;">
+          <h3 style="font-size: 1.15rem; margin: 0 0 4px; font-weight: 800;">{{ event.title }}</h3>
+          <div style="font-size: 0.85rem; color: var(--text-secondary);">
+            📅 {{ event.event_date | format_date }} at {{ event.event_time }} &bull; 📍 {{ event.venue }}
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 1.25rem; font-weight: 800; color: {% if remaining_seats == 0 %}var(--danger){% else %}var(--primary){% endif %};">
+            {{ remaining_seats }} / {{ event.capacity }}
+          </div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Seats Left</div>
+        </div>
+      </div>
+
+      {% if remaining_seats <= 0 %}
+      <div class="alert alert-danger">
+        <strong>Event Sold Out!</strong> Maximum venue capacity has been reached. No tickets can be booked for this event.
+      </div>
+      <a href="{{ url_for('events_list') }}" class="btn btn-secondary">&larr; Return to Events</a>
+      {% else %}
+
+      <!-- Pricing Tier Box -->
+      <div style="background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--primary); font-weight: 700; letter-spacing: 0.5px;">
+              {% if is_active_member %}
+              ⭐ Active Club Member Rate Applied
+              {% else %}
+              Standard General Admission Rate
+              {% endif %}
+            </div>
+            <div style="font-size: 0.85rem; color: #4338ca; margin-top: 2px;">
+              {% if is_active_member %}
+              Your verified membership entitles you to discounted pricing.
+              {% else %}
+              Standard rate applies. Active club members receive discounted entry ({{ event.member_price | currency }}).
+              {% endif %}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.6rem; font-weight: 900; color: var(--primary);">
+              {{ calculated_price | currency }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Registration Form -->
+      <form action="{{ url_for('event_register', event_id=event.id) }}" method="POST">
+        <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px;">
+          1. Attendee Information
+        </h3>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="attendee_name">Attendee Full Name *</label>
+            <input type="text" id="attendee_name" name="attendee_name" class="form-control" 
+                   value="{{ form_data.attendee_name if form_data else (current_user_row.full_name if current_user_row else '') }}" required autofocus>
+          </div>
+
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="attendee_email">Email Address *</label>
+            <input type="email" id="attendee_email" name="attendee_email" class="form-control" 
+                   value="{{ form_data.attendee_email if form_data else (current_user_row.email if current_user_row else '') }}" required>
+            <div class="form-text">Your unique gate pass will be issued to this email.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="attendee_phone">Phone Number (Optional)</label>
+          <input type="tel" id="attendee_phone" name="attendee_phone" class="form-control" 
+                 value="{{ form_data.attendee_phone if form_data else '' }}" placeholder="+91 98765 43210">
+        </div>
+
+        <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-top: 24px; margin-bottom: 12px;">
+          2. Payment Simulation Options
+        </h3>
+
+        <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <label class="form-label" for="payment_simulation" style="margin: 0; color: #6b21a8; font-weight: 700;">
+              💳 Simulated Demo Payment Gateway
+            </label>
+            <span class="badge badge-neutral" style="background: #f3e8ff; color: #7e22ce;">Evaluation Test Harness</span>
+          </div>
+
+          <select id="payment_simulation" name="payment_simulation" class="form-select" style="margin-bottom: 10px;">
+            <option value="demo_success" selected>✅ Successful Demo Payment (Settle &amp; Issue Ticket)</option>
+            <option value="simulate_failure">❌ Simulate Payment Decline / Gateway Rejection</option>
+          </select>
+
+          <div style="font-size: 0.8rem; color: #7e22ce; line-height: 1.4;">
+            ℹ️ <strong>Demo Mode Notice:</strong> This simulates digital checkout confirmation. No actual credit card, UPI or bank charge will occur. Amount is validated server-side and recorded in the demo ledger.
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+            Confirm &amp; Settle Demo Payment ({{ calculated_price | currency }})
+          </button>
+          <a href="{{ url_for('event_view', event_id=event.id) }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
